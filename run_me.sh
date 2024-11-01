@@ -25,23 +25,15 @@ if [[ $? -ne 0 ]]; then
   exit 1
 fi
 
-# Step 3: Run the server in the background
-echo "Starting the server..."
-./transpose_server &
+# # Run the server in the background
+# echo "Starting the server..."
+# ./transpose_server &
+# SERVER_PID=$!
 
-# Capture the server's process ID to manage it later
-SERVER_PID=$!
+# # Allow the server a moment to start up (adjust if necessary)
+# sleep 1
 
-# Allow the server a moment to start up (adjust if necessary)
-sleep 2
-
-# Step 4: Run the client
-echo "Running the client..."
-./transpose_client
-
-# Step 5: Cleanup - Kill the server process after the client is done
-echo "Stopping the server..."
-kill $SERVER_PID
-
-echo "Done."
+# # Run the client
+# echo "Running the client..."
+# ./transpose_client
 

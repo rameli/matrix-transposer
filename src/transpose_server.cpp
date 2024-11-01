@@ -1,10 +1,17 @@
-#include <iostream>
+#include "UnixSocketServer.h"
+#include <thread>
+#include <chrono>
+#include <string>
 
-using std::cout;
-using std::endl;
+int main() {
+    const std::string socketPath = "/tmp/mysocket";
 
-int main()
-{
-    cout << "Hello server!" << endl;
+    UnixSocketServer server(socketPath);
+    server.start();
+
+    std::string a;
+    std::getline(std::cin, a);
+
+    server.stop();
     return 0;
 }

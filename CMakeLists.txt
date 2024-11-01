@@ -5,18 +5,22 @@ cmake_minimum_required(VERSION 3.10)
 project(matrix-transposer)
 
 # Enable C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Specify source files for each executable
 set(SERVER_SOURCES
     src/transpose_server.cpp
-    src/matrix_utils.cpp
+    src/ipc_utils.cpp
+    src/MatrixBuffer.cpp
+    src/UnixSocketServer.cpp
 )
 
 set(CLIENT_SOURCES
     src/transpose_client.cpp
-    src/matrix_utils.cpp
+    src/ipc_utils.cpp
+    src/MatrixBuffer.cpp
+    src/UnixSocketClient.cpp
 )
 
 # Create the transpose_server executable
