@@ -1,41 +1,46 @@
+#include <cstdint>
+#include <iostream>
 #include <sstream>
 #include <sys/types.h>
 #include <unistd.h>
-#include <cstdint>
 
 #include "MatrixBuffer.h"
 
-MatrixBuffer::MatrixBuffer(size_t m, size_t n, size_t k) :
-    shm_fd(-1),
-    ptr(nullptr),
-    num_rows(1UL << m),
-    num_cols(1UL << n)
+MatrixBuffer::MatrixBuffer(uint32_t uniqueId, size_t m, size_t n, size_t k) :
+    m_FileDescriptor(-1),
+    m_RawPointer(nullptr),
+    m_NumRows(1UL << m),
+    m_NumColumns(1UL << n),
+    m_BufferIndex(k),
+    m_UniqueId(uniqueId)
 {
-    // Generate the shared memory name in the specified format
-    std::ostringstream oss;
-    oss << "transpose_client_pid" << getpid() << "_k" << k;
-    shm_name = oss.str();
+    // Generate the shared memory name based on the process ID and index
+    m_ShmObjectName = CreateShmObjectName(m_UniqueId, m_BufferIndex);
 
     // Calculate size: 2^m * 2^n * sizeof(uint64_t)
-    shm_size = num_rows * num_cols * sizeof(uint64_t);
+    m_BufferBytes = m_NumRows * m_NumColumns * sizeof(uint64_t);
 
     // Create shared memory object
-    shm_fd = shm_open(shm_name.c_str(), O_CREAT | O_RDWR, 0666);
-    if (shm_fd == -1)
+    m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR, 0666);
+    if (m_FileDescriptor == -1)
     {
-        throw std::runtime_error("Failed to create shared memory object");
+        throw std::runtime_error("Failed to create shared memory object for ID: " + std::to_string(m_UniqueId) +
+            ", m: " + std::to_string(m) +
+            ", n: " + std::to_string(n) +
+            ", k: " + std::to_string(k) + 
+            "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
     }
 
     // Set the size of the shared memory object
-    if (ftruncate(shm_fd, shm_size) == -1)
+    if (ftruncate(m_FileDescriptor, m_BufferBytes) == -1)
     {
         unlink(); // Clean up before throwing
         throw std::runtime_error("Failed to set shared memory size");
     }
 
     // Map the shared memory object
-    ptr = mmap(0, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (ptr == MAP_FAILED)
+    m_RawPointer = mmap(0, m_BufferBytes, PROT_READ | PROT_WRITE, MAP_SHARED, m_FileDescriptor, 0);
+    if (m_RawPointer == MAP_FAILED)
     {
         unlink(); // Clean up before throwing
         throw std::runtime_error("Failed to map shared memory");
@@ -44,38 +49,56 @@ MatrixBuffer::MatrixBuffer(size_t m, size_t n, size_t k) :
 
 MatrixBuffer::~MatrixBuffer()
 {
-    if (ptr != MAP_FAILED && ptr != nullptr)
+    if (m_RawPointer != MAP_FAILED && m_RawPointer != nullptr)
     {
-        munmap(ptr, shm_size); // Unmap shared memory
+        munmap(m_RawPointer, m_BufferBytes); // Unmap shared memory
     }
     unlink(); // Unlink the shared memory object
 }
 
 void* MatrixBuffer::GetRawPointer() const
 {
-    return ptr; // Return the pointer to the shared memory
+    return m_RawPointer; // Return the pointer to the shared memory
 }
 
 size_t MatrixBuffer::RowCount() const
 {
-    return num_rows; // Return number of rows
+    return m_NumRows; // Return number of rows
 }
 
 size_t MatrixBuffer::ColumnCount() const
 {
-    return num_cols; // Return number of columns
+    return m_NumColumns; // Return number of columns
 }
 
 std::string MatrixBuffer::GetName() const
 {
-    return shm_name; // Return the shared memory name
+    return m_ShmObjectName; // Return the shared memory name
 }
+
+size_t MatrixBuffer::GetElementCount() const
+{
+    return m_NumRows * m_NumColumns;
+}
+
+size_t MatrixBuffer::GetBufferSizeInBytes() const
+{
+    return m_BufferBytes;
+}
+
+std::string MatrixBuffer::CreateShmObjectName(uint32_t uniqueId, size_t k)
+{
+    std::ostringstream oss;
+    oss << "transpose_client_uid{" << uniqueId << "}_k{" << k << "}";
+    return oss.str();
+}
+
 
 void MatrixBuffer::unlink()
 {
-    if (shm_fd != -1)
+    if (m_FileDescriptor != -1)
     {
-        shm_unlink(shm_name.c_str()); // Remove the shared memory object
-        shm_name.clear();
+        shm_unlink(m_ShmObjectName.c_str());
+        close(m_FileDescriptor);
     }
 }

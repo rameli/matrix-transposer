@@ -8,33 +8,56 @@ project(matrix-transposer)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Specify source files for each executable
+# -------------------------------------------------------
+# Shared libraries
+# -------------------------------------------------------
+add_library(IpcUtils SHARED
+    src/ipc_utils.cpp
+    src/UnixSocketServer.cpp
+    src/UnixSocketClient.cpp
+)
+
+add_library(MatrixBuffer SHARED
+    src/MatrixBuffer.cpp
+)
+
+target_include_directories(IpcUtils PUBLIC include)
+target_include_directories(MatrixBuffer PUBLIC include)
+
+# -------------------------------------------------------
+# Executables
+# -------------------------------------------------------
+
 set(SERVER_SOURCES
     src/transpose_server.cpp
-    src/ipc_utils.cpp
-    src/MatrixBuffer.cpp
-    src/UnixSocketServer.cpp
 )
 
 set(CLIENT_SOURCES
     src/transpose_client.cpp
-    src/ipc_utils.cpp
-    src/MatrixBuffer.cpp
-    src/UnixSocketClient.cpp
 )
 
-# Create the transpose_server executable
 add_executable(transpose_server ${SERVER_SOURCES})
+target_link_libraries(transpose_server PRIVATE MatrixBuffer IpcUtils)
 
-# Create the transpose_client executable
 add_executable(transpose_client ${CLIENT_SOURCES})
+target_link_libraries(transpose_client PRIVATE MatrixBuffer IpcUtils)
 
-# Add additional libraries or link dependencies if necessary
-# For example:
-# target_link_libraries(transpose_server <dependencies>)
-# target_link_libraries(transpose_client <dependencies>)
+# -------------------------------------------------------
+# Add GoogleTest for testing
+# -------------------------------------------------------
 
-# Include directories if your source files are organized in different folders
-target_include_directories(transpose_server PRIVATE include)
-target_include_directories(transpose_client PRIVATE include)
+enable_testing()
 
+# Add test source files
+set(TEST_SOURCES
+    tests/test_MatrixBuffer.cpp
+)
+
+add_executable(run_tests ${TEST_SOURCES})
+
+target_include_directories(run_tests PRIVATE include)
+target_link_libraries(run_tests PRIVATE gtest gtest_main MatrixBuffer)
+
+# Automatically discover tests
+include(GoogleTest)
+gtest_discover_tests(run_tests)
