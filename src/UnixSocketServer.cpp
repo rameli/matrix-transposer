@@ -1,89 +1,97 @@
 #include "UnixSocketServer.h"
 
-UnixSocketServer::UnixSocketServer(const std::string& socketPath) : socketPath(socketPath), running(false) {
-    // Create the socket
-    serverSocket = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (serverSocket < 0) {
-        perror("socket");
-        exit(EXIT_FAILURE);
+UnixSocketServer::UnixSocketServer(const std::string& socketPath) :
+    m_SocketPath(socketPath),
+    m_Running(false)
+{
+    m_ServerSocket = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (m_ServerSocket < 0)
+    {
+        throw std::runtime_error("Failed to create server socket.");
     }
 
-    // Remove the socket file if it already exists
     unlink(socketPath.c_str());
 
-    // Set up the socket address structure
     sockaddr_un address;
     memset(&address, 0, sizeof(address));
     address.sun_family = AF_UNIX;
     strncpy(address.sun_path, socketPath.c_str(), sizeof(address.sun_path) - 1);
 
-    // Bind the socket
-    if (bind(serverSocket, (struct sockaddr*)&address, sizeof(address)) < 0) {
-        perror("bind");
-        exit(EXIT_FAILURE);
+    if (bind(m_ServerSocket, (struct sockaddr*)&address, sizeof(address)) < 0)
+    {
+        close(m_ServerSocket);
+        throw std::runtime_error("Failed to bind server socket.");
     }
 
-    // Listen for incoming connections
-    if (listen(serverSocket, 5) < 0) {
-        perror("listen");
-        exit(EXIT_FAILURE);
+    if (listen(m_ServerSocket, 20) < 0)
+    {
+        close(m_ServerSocket);
+        throw std::runtime_error("Failed to listen on server socket.");
     }
-}
 
-UnixSocketServer::~UnixSocketServer() {
-    stop();
-}
-
-void UnixSocketServer::start() {
-    running = true;
+    m_Running = true;
     std::cout << "Server is listening on " << socketPath << "..." << std::endl;
 
-    // Accept connections in a separate thread
-    std::thread acceptThread(&UnixSocketServer::acceptConnections, this);
-    acceptThread.detach();
+    m_ClientThreadsVec.reserve(32);
+    m_AcceptThread = std::thread(&UnixSocketServer::acceptConnections, this);
 }
 
-void UnixSocketServer::stop() {
-    running = false;
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Wait for the accept thread to exit
-    close(serverSocket);
-    unlink(socketPath.c_str());
+UnixSocketServer::~UnixSocketServer()
+{
+    if (m_Running)
+    {
+        stop();
+    }
+}
+
+void UnixSocketServer::stop()
+{
+    m_Running = false;
+    
+    for (auto& clientThread : m_ClientThreadsVec)
+    {
+        clientThread.join();
+    }
+    
+    shutdown(m_ServerSocket, SHUT_RDWR);
+    close(m_ServerSocket);
+    m_AcceptThread.join();
+
+    unlink(m_SocketPath.c_str());
 }
 
 void UnixSocketServer::acceptConnections() {
-    while (running) {
-        int clientSocket = accept(serverSocket, nullptr, nullptr);
-        if (clientSocket >= 0) {
-            std::cout << "New client connected." << std::endl;
-            clientThreads.emplace_back(&UnixSocketServer::handleClient, this, clientSocket);
+   
+    while (m_Running)
+    {
+        std::cout << "accept()" << std::endl;
+        int clientSocket = accept(m_ServerSocket, nullptr, nullptr);
+        std::cout << "accept() returned" << std::endl;
+
+        if (clientSocket >= 0)
+        {
+            m_ClientThreadsVec.emplace_back(&UnixSocketServer::handleClient, this, clientSocket);
         }
     }
 }
 
 void UnixSocketServer::handleClient(int clientSocket) {
-    receiveMessages(clientSocket);
-    close(clientSocket);
-}
-
-void UnixSocketServer::receiveMessages(int clientSocket) {
     char buffer[256];
-    while (true) {
-        ssize_t bytesRead = read(clientSocket, buffer, sizeof(buffer));
-        if (bytesRead > 0) {
-            buffer[bytesRead] = '\0'; // Null-terminate the received message
-            std::cout << "Received: " << buffer << std::endl;
+    std::cout << "Handle client: " << clientSocket << std::endl;
 
-            // Optionally echo the message back to all clients
-            sendMessageToAll(buffer);
+    while (m_Running)
+    {
+        ssize_t bytesRead = read(clientSocket, buffer, sizeof(buffer));
+
+        if (bytesRead > 0)
+        {
+            buffer[bytesRead] = '\0';
+            std::cout << "Received: " << buffer << std::endl;
         } else {
-            break; // Exit if no more data is read
+            break;
         }
     }
-}
+    std::cout << "Handle client exiting: " << clientSocket << std::endl;
 
-void UnixSocketServer::sendMessageToAll(const std::string& message) {
-    // Here you can send the message to all connected clients.
-    // For simplicity, we're not maintaining a list of clients in this implementation.
-    // You would typically need to store client sockets in a vector.
+    close(clientSocket);
 }
-

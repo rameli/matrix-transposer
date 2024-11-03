@@ -51,12 +51,13 @@ enable_testing()
 # Add test source files
 set(TEST_SOURCES
     tests/test_MatrixBuffer.cpp
+    tests/test_UnixSockets.cpp
 )
 
 add_executable(run_tests ${TEST_SOURCES})
 
 target_include_directories(run_tests PRIVATE include)
-target_link_libraries(run_tests PRIVATE gtest gtest_main MatrixBuffer)
+target_link_libraries(run_tests PRIVATE gtest gtest_main MatrixBuffer IpcUtils)
 
 # Automatically discover tests
 include(GoogleTest)

@@ -13,7 +13,7 @@ void clientFunction(const std::string& socketPath, const std::string& clientName
 }
 
 int main() {
-    const std::string socketPath = "/tmp/mysocket";
+    const std::string socketPath = "/tmp/ssd_server.sock";
 
     // Start multiple clients
     std::thread client1(clientFunction, socketPath, "Client 1");

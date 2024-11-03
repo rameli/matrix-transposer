@@ -26,10 +26,10 @@ static bool ShmObjectExists(uint32_t uniqueId, size_t k)
     return std::filesystem::exists(filePath);
 }
 
-static std::vector<size_t> gRowCountExponents = {0, 1, 2, 3, 10, 15, 20};
-static std::vector<size_t> gColumnCountExponents = {0, 1, 2, 3, 10, 15, 20};
+static std::vector<size_t> gRowCountExponents = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+static std::vector<size_t> gColumnCountExponents = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
 
-TEST(MatrixBufferExceptionTest, CorrectInit)
+TEST(MatrixBufferTestSuite, CorrectInit)
 {
     uint32_t uniqueId = getpid();
     
@@ -56,7 +56,7 @@ TEST(MatrixBufferExceptionTest, CorrectInit)
     }
 }
 
-TEST(MatrixBufferExceptionTest, AccessSharedBuffer)
+TEST(MatrixBufferTestSuite, AccessSharedBuffer)
 {
     std::random_device rd;
     std::mt19937_64 gen(rd());
@@ -117,7 +117,7 @@ TEST(MatrixBufferExceptionTest, AccessSharedBuffer)
     }
 }
 
-TEST(MatrixBufferExceptionTest, SimultaneousAccess)
+TEST(MatrixBufferTestSuite, SimultaneousAccess)
 {
     std::random_device rd;
     std::mt19937_64 gen(rd());
