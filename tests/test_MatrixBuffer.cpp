@@ -1,11 +1,12 @@
 #include <cstring>
-#include <thread>
-#include <filesystem>
-#include <sys/mman.h>
 #include <fcntl.h>
-#include <memory>
-#include <vector>
+#include <filesystem>
 #include <gtest/gtest.h>
+#include <memory>
+#include <random>
+#include <sys/mman.h>
+#include <thread>
+#include <vector>
 
 #include "MatrixBuffer.h"
 
@@ -25,8 +26,8 @@ static bool ShmObjectExists(uint32_t uniqueId, size_t k)
     return std::filesystem::exists(filePath);
 }
 
-static std::vector<size_t> gRowCountExponents = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15};
-static std::vector<size_t> gColumnCountExponents = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+static std::vector<size_t> gRowCountExponents = {0, 1, 2, 3, 10, 15, 20};
+static std::vector<size_t> gColumnCountExponents = {0, 1, 2, 3, 10, 15, 20};
 
 TEST(MatrixBufferExceptionTest, CorrectInit)
 {
@@ -57,9 +58,18 @@ TEST(MatrixBufferExceptionTest, CorrectInit)
 
 TEST(MatrixBufferExceptionTest, AccessSharedBuffer)
 {
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
+    
     uint32_t uniqueId = getpid();
     uint64_t* pBufferPtr = nullptr;
-    size_t numElements = 0;    
+    size_t numElements = 0;
+
+    uint64_t FIRST_ELEMENT_VALUE = dist(gen);
+    uint64_t MID_ELEMENT_VALUE = dist(gen);
+    uint64_t LAST_ELEMENT_VALUE = dist(gen);
+
     for (size_t k = 0; k < 10; k++)
     {
         for (size_t n : gColumnCountExponents)
@@ -80,27 +90,27 @@ TEST(MatrixBufferExceptionTest, AccessSharedBuffer)
 
                 if (numElements == 1)
                 {
-                    pBufferPtr[0] = 0x1234567890ABCDEF;
-                    EXPECT_EQ(pBufferPtr[0], 0x1234567890ABCDEF);
+                    pBufferPtr[0] = FIRST_ELEMENT_VALUE;
+                    EXPECT_EQ(pBufferPtr[0], FIRST_ELEMENT_VALUE);
                 }
                 else if (numElements == 2)
                 {
-                    pBufferPtr[0] = 0x1234567890ABCDEF;
-                    pBufferPtr[numElements - 1] = 0xFEDCBA0987654321;
+                    pBufferPtr[0] = FIRST_ELEMENT_VALUE;
+                    pBufferPtr[numElements - 1] = LAST_ELEMENT_VALUE;
 
-                    EXPECT_EQ(pBufferPtr[0], 0x1234567890ABCDEF);
-                    EXPECT_EQ(pBufferPtr[numElements - 1], 0xFEDCBA0987654321);
+                    EXPECT_EQ(pBufferPtr[0], FIRST_ELEMENT_VALUE);
+                    EXPECT_EQ(pBufferPtr[numElements - 1], LAST_ELEMENT_VALUE);
                 }
                 else
                 {
                     // More than four elements
-                    pBufferPtr[0] = 0x1234567890ABCDEF;
-                    pBufferPtr[numElements/2] = 0x1030507090A0C0E0;
-                    pBufferPtr[numElements - 1] = 0xFEDCBA0987654321;
+                    pBufferPtr[0] = FIRST_ELEMENT_VALUE;
+                    pBufferPtr[numElements/2] = MID_ELEMENT_VALUE;
+                    pBufferPtr[numElements - 1] = LAST_ELEMENT_VALUE;
 
-                    EXPECT_EQ(pBufferPtr[0], 0x1234567890ABCDEF);
-                    EXPECT_EQ(pBufferPtr[numElements/2], 0x1030507090A0C0E0);
-                    EXPECT_EQ(pBufferPtr[numElements - 1], 0xFEDCBA0987654321);
+                    EXPECT_EQ(pBufferPtr[0], FIRST_ELEMENT_VALUE);
+                    EXPECT_EQ(pBufferPtr[numElements/2], MID_ELEMENT_VALUE);
+                    EXPECT_EQ(pBufferPtr[numElements - 1], LAST_ELEMENT_VALUE);
                 }
             }
         }
@@ -109,82 +119,98 @@ TEST(MatrixBufferExceptionTest, AccessSharedBuffer)
 
 TEST(MatrixBufferExceptionTest, SimultaneousAccess)
 {
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
+    
     uint32_t uniqueId = getpid();
     uint64_t* pBufferPtr = nullptr;
     size_t numElements = 0;
-    constexpr size_t k = 0;
+
+    uint64_t FIRST_ELEMENT_VALUE = dist(gen);
+    uint64_t MID_ELEMENT_VALUE = dist(gen);
+    uint64_t LAST_ELEMENT_VALUE = dist(gen);
+
+    constexpr size_t K = 0;
 
     for (uint32_t numSimultaneousAccess = 1; numSimultaneousAccess < 10; numSimultaneousAccess++)
     {
-        std::vector<std::unique_ptr<MatrixBuffer>> pMatrixBuffers;
+        std::vector<std::unique_ptr<MatrixBuffer>> pMatrixBuffersVec;
 
         for (size_t n : gColumnCountExponents)
         {
             for (size_t m : gRowCountExponents)
             {
+                // Create multiple objects to access the shared memory
+                pMatrixBuffersVec.clear();
                 for (uint32_t matrixBufferIndex = 0; matrixBufferIndex < numSimultaneousAccess; matrixBufferIndex++)
                 {
-                    ASSERT_NO_THROW(pMatrixBuffers[matrixBufferIndex] = std::make_unique<MatrixBuffer>(uniqueId, m, n, k));
-                    EXPECT_NE(pMatrixBuffers[matrixBufferIndex], nullptr);
+                    std::unique_ptr<MatrixBuffer> pMatrixBuffer;
+                    ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<MatrixBuffer>(uniqueId, m, n, K));
+                    EXPECT_NE(pMatrixBuffer, nullptr);
+                    pMatrixBuffersVec.push_back(std::move(pMatrixBuffer));
                 }
                 
                 // First object writes to the shared memory
-                pBufferPtr = static_cast<uint64_t*>(pMatrixBuffers[0]->GetRawPointer());
+                pBufferPtr = static_cast<uint64_t*>(pMatrixBuffersVec[0]->GetRawPointer());
                 EXPECT_NE(pBufferPtr, nullptr);
                 EXPECT_NE(pBufferPtr, MAP_FAILED);
 
-                numElements = pMatrixBuffers[0]->GetElementCount();
+                numElements = pMatrixBuffersVec[0]->GetElementCount();
                 EXPECT_EQ(numElements, (1UL << m) * (1UL << n));
 
                 if (numElements == 1)
                 {
-                    EXPECT_NE(pBufferPtr[0], 0x1234567890ABCDEF);
-                    pBufferPtr[0] = 0x1234567890ABCDEF;
+                    // No randomly correct residual values from before
+                    EXPECT_NE(pBufferPtr[0], FIRST_ELEMENT_VALUE);
+                    pBufferPtr[0] = FIRST_ELEMENT_VALUE;
                 }
                 else if (numElements == 2)
                 {
-                    EXPECT_NE(pBufferPtr[0], 0x1234567890ABCDEF);
-                    EXPECT_NE(pBufferPtr[numElements - 1], 0xFEDCBA0987654321);
+                    // No randomly correct residual values from before
+                    EXPECT_NE(pBufferPtr[0], FIRST_ELEMENT_VALUE);
+                    EXPECT_NE(pBufferPtr[numElements - 1], LAST_ELEMENT_VALUE);
 
-                    pBufferPtr[0] = 0x1234567890ABCDEF;
-                    pBufferPtr[numElements - 1] = 0xFEDCBA0987654321;
+                    pBufferPtr[0] = FIRST_ELEMENT_VALUE;
+                    pBufferPtr[numElements - 1] = LAST_ELEMENT_VALUE;
                 }
                 else
                 {
-                    EXPECT_NE(pBufferPtr[0], 0x1234567890ABCDEF);
-                    EXPECT_NE(pBufferPtr[numElements/2], 0x1030507090A0C0E0);
-                    EXPECT_NE(pBufferPtr[numElements - 1], 0xFEDCBA0987654321);
+                    // No randomly correct residual values from before
+                    EXPECT_NE(pBufferPtr[0], FIRST_ELEMENT_VALUE);
+                    EXPECT_NE(pBufferPtr[numElements/2], MID_ELEMENT_VALUE);
+                    EXPECT_NE(pBufferPtr[numElements - 1], LAST_ELEMENT_VALUE);
 
                     // More than four elements
-                    pBufferPtr[0] = 0x1234567890ABCDEF;
-                    pBufferPtr[numElements/2] = 0x1030507090A0C0E0;
-                    pBufferPtr[numElements - 1] = 0xFEDCBA0987654321;
+                    pBufferPtr[0] = FIRST_ELEMENT_VALUE;
+                    pBufferPtr[numElements/2] = MID_ELEMENT_VALUE;
+                    pBufferPtr[numElements - 1] = LAST_ELEMENT_VALUE;
                 }
 
                 // All objects read from the shared memory
                 for (uint32_t matrixBufferIndex = 0; matrixBufferIndex < numSimultaneousAccess; matrixBufferIndex++)
                 {
-                    pBufferPtr = static_cast<uint64_t*>(pMatrixBuffers[matrixBufferIndex]->GetRawPointer());
+                    pBufferPtr = static_cast<uint64_t*>(pMatrixBuffersVec[matrixBufferIndex]->GetRawPointer());
                     EXPECT_NE(pBufferPtr, nullptr);
                     EXPECT_NE(pBufferPtr, MAP_FAILED);
 
-                    numElements = pMatrixBuffers[matrixBufferIndex]->GetElementCount();
+                    numElements = pMatrixBuffersVec[matrixBufferIndex]->GetElementCount();
                     EXPECT_EQ(numElements, (1UL << m) * (1UL << n));
 
                     if (numElements == 1)
                     {
-                        EXPECT_EQ(pBufferPtr[0], 0x1234567890ABCDEF);
+                        EXPECT_EQ(pBufferPtr[0], FIRST_ELEMENT_VALUE);
                     }
                     else if (numElements == 2)
                     {
-                        EXPECT_EQ(pBufferPtr[0], 0x1234567890ABCDEF);
-                        EXPECT_EQ(pBufferPtr[numElements - 1], 0xFEDCBA0987654321);
+                        EXPECT_EQ(pBufferPtr[0], FIRST_ELEMENT_VALUE);
+                        EXPECT_EQ(pBufferPtr[numElements - 1], LAST_ELEMENT_VALUE);
                     }
                     else
                     {
-                        EXPECT_EQ(pBufferPtr[0], 0x1234567890ABCDEF);
-                        EXPECT_EQ(pBufferPtr[numElements/2], 0x1030507090A0C0E0);
-                        EXPECT_EQ(pBufferPtr[numElements - 1], 0xFEDCBA0987654321);
+                        EXPECT_EQ(pBufferPtr[0], FIRST_ELEMENT_VALUE);
+                        EXPECT_EQ(pBufferPtr[numElements/2], MID_ELEMENT_VALUE);
+                        EXPECT_EQ(pBufferPtr[numElements - 1], LAST_ELEMENT_VALUE);
                     }
                 }
             }
