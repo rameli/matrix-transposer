@@ -19,7 +19,7 @@ public:
      * Initializes the Mpsc queue with the specified endpoint.
      *
      * @param clientId The client ID for the endpoint.
-     * @param endpoint The endpoint used to owner the shared memory object.
+     * @param endpoint The object owns the shared memory object if it a client.
      */
     MpscQueue(uint32_t clientId, Endpoint endpoint);
 
