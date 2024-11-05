@@ -41,7 +41,7 @@ TEST(MatrixBufferTestSuite, CorrectInit)
             {
                 std::unique_ptr<SharedMatrixBuffer> pMatrixBuffer;
                 
-                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, k));
+                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, k, Endpoint::CLIENT));
 
                 EXPECT_NE(pMatrixBuffer->GetRawPointer(), nullptr);
                 EXPECT_NE(pMatrixBuffer->GetRawPointer(), MAP_FAILED);
@@ -78,7 +78,7 @@ TEST(MatrixBufferTestSuite, AccessSharedBuffer)
             {
                 std::unique_ptr<SharedMatrixBuffer> pMatrixBuffer;
                 
-                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, k));
+                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, k, Endpoint::CLIENT));
                 EXPECT_NE(pMatrixBuffer, nullptr);
 
                 pBufferPtr = static_cast<uint64_t*>(pMatrixBuffer->GetRawPointer());
@@ -143,10 +143,18 @@ TEST(MatrixBufferTestSuite, SimultaneousAccess)
             {
                 // Create multiple objects to access the shared memory
                 pMatrixBuffersVec.clear();
-                for (uint32_t matrixBufferIndex = 0; matrixBufferIndex < numSimultaneousAccess; matrixBufferIndex++)
+
+                // The first object is the client (creates/destroys the shared memory object)
+                std::unique_ptr<SharedMatrixBuffer> pMatrixBufferClient;
+                ASSERT_NO_THROW(pMatrixBufferClient = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, K, Endpoint::CLIENT));
+                EXPECT_NE(pMatrixBufferClient, nullptr);
+                pMatrixBuffersVec.push_back(std::move(pMatrixBufferClient));
+
+                // Subsequent objects are servers (access the shared memory object)
+                for (uint32_t matrixBufferIndex = 1; matrixBufferIndex < numSimultaneousAccess; matrixBufferIndex++)
                 {
                     std::unique_ptr<SharedMatrixBuffer> pMatrixBuffer;
-                    ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, K));
+                    ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, K, Endpoint::SERVER));
                     EXPECT_NE(pMatrixBuffer, nullptr);
                     pMatrixBuffersVec.push_back(std::move(pMatrixBuffer));
                 }

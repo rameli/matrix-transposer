@@ -8,6 +8,8 @@
 #include <string>
 #include <sstream>
 
+#include "utilities/Endpoint.h"
+
 /**
  * @class SharedMatrixBuffer
  * @brief A class that manages a shared memory buffer for a 2^m by 2^n matrix of uint64_t elements.
@@ -26,13 +28,14 @@ public:
      * @param m The exponent for the number of rows, resulting in 2^m rows.
      * @param n The exponent for the number of columns, resulting in 2^n columns.
      * @param k An arbitrary index used in the shared memory object filename in /dev/shm/.
+     * @param endpoint The role of the endpoint in the network connection.
      * 
      * This constructor creates a shared memory segment with the name formatted as
      * "transpose_client_shm_uid_k", where PID is the process ID and k is the provided index.
      * 
      * @throw std::runtime_error If shared memory creation or mapping fails.
      */
-    SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k);
+    SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k, Endpoint endpoint);
     
     /**
      * @brief Destroys the SharedMatrixBuffer instance and releases resources.
@@ -46,7 +49,7 @@ public:
      * 
      * @return A pointer to the allocated shared memory, which can be cast to uint64_t* for matrix access.
      */
-    void* GetRawPointer() const;
+    uint64_t* GetRawPointer() const;
 
     /**
      * @brief Gets the number of rows in the matrix.
@@ -101,11 +104,5 @@ private:
     uint32_t m_NumRows;          ///< Number of rows in the matrix.
     uint32_t m_NumColumns;       ///< Number of columns in the matrix.
     uint32_t m_BufferIndex;      ///< Index used in the shared memory object filename.
-
-    /**
-     * @brief Unlinks the shared memory object.
-     * 
-     * This function removes the shared memory object from the system.
-     */
-    void unlink(); // Unlink shared memory
+    Endpoint m_Endpoint;         ///< The role of the endpoint in the network connection.
 };

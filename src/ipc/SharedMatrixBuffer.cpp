@@ -7,13 +7,14 @@
 #include "ipc/SharedMatrixBuffer.h"
 
 
-SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k) :
+SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k, Endpoint endpoint) :
     m_FileDescriptor(-1),
     m_RawPointer(nullptr),
     m_NumRows(1UL << m),
     m_NumColumns(1UL << n),
     m_BufferIndex(k),
-    m_UniqueId(uniqueId)
+    m_UniqueId(uniqueId),
+    m_Endpoint(endpoint)
 {
     // Generate the shared memory name based on the process ID and index
     m_ShmObjectName = CreateShmObjectName(m_UniqueId, m_BufferIndex);
@@ -21,21 +22,51 @@ SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n
     // Calculate size: 2^m * 2^n * sizeof(uint64_t)
     m_BufferBytes = m_NumRows * m_NumColumns * sizeof(uint64_t);
 
-    // Create shared memory object
-    m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR, 0666);
-    if (m_FileDescriptor == -1)
+    // Only the client should initialize the shared memory object for the futex.
+    // If the object already exists, unlink it and try again.
+    if (m_Endpoint == Endpoint::CLIENT)
     {
-        throw std::runtime_error("Failed to create shared memory object for ID: " + std::to_string(m_UniqueId) +
-            ", m: " + std::to_string(m) +
-            ", n: " + std::to_string(n) +
-            ", k: " + std::to_string(k) + 
-            "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
+        // Client opens the mutex shared memory object with the O_EXCL flag
+        m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR | O_EXCL, 0666);
+
+        if (m_FileDescriptor < 0)
+        {
+            if (errno == EEXIST) {
+                shm_unlink(m_ShmObjectName.c_str());
+                m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
+            }
+            if (m_FileDescriptor < 0) {
+                if (m_FileDescriptor == -1)
+                {
+                    throw std::runtime_error("Failed to create shared memory object for ID: " + std::to_string(m_UniqueId) +
+                        ", m: " + std::to_string(m) +
+                        ", n: " + std::to_string(n) +
+                        ", k: " + std::to_string(k) + 
+                        "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
+                }
+            }
+        }
+    }
+    else if (m_Endpoint == Endpoint::SERVER)
+    {
+        // Server opens the mutex shared memory object without the O_EXCL flag
+        m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR, 0666);
+
+        if (m_FileDescriptor < 0)
+        {
+            throw std::runtime_error("Failed to create shared memory object for ID: " + std::to_string(m_UniqueId) +
+                ", m: " + std::to_string(m) +
+                ", n: " + std::to_string(n) +
+                ", k: " + std::to_string(k) + 
+                "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
+        }
     }
 
     // Set the size of the shared memory object
     if (ftruncate(m_FileDescriptor, m_BufferBytes) == -1)
     {
-        unlink(); // Clean up before throwing
+        // Destructor won't be called if an exception is thrown in the constructor
+        close(m_FileDescriptor);
         throw std::runtime_error("Failed to set shared memory size");
     }
 
@@ -43,38 +74,48 @@ SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n
     m_RawPointer = mmap(0, m_BufferBytes, PROT_READ | PROT_WRITE, MAP_SHARED, m_FileDescriptor, 0);
     if (m_RawPointer == MAP_FAILED)
     {
-        unlink(); // Clean up before throwing
+        // Destructor won't be called if an exception is thrown in the constructor
+        close(m_FileDescriptor);
         throw std::runtime_error("Failed to map shared memory");
     }
+
+    // According to https://man7.org/linux/man-pages/man3/shm_open.3.html
+    // "After a call to mmap(2) the file descriptor may be closed without affecting the memory mapping."
+    close(m_FileDescriptor);
 }
 
 SharedMatrixBuffer::~SharedMatrixBuffer()
 {
     if (m_RawPointer != MAP_FAILED && m_RawPointer != nullptr)
     {
-        munmap(m_RawPointer, m_BufferBytes); // Unmap shared memory
+        munmap(m_RawPointer, m_BufferBytes);
     }
-    unlink(); // Unlink the shared memory object
+
+    // Only the client should unlink the shared memory object
+    if (m_Endpoint == Endpoint::CLIENT)
+    {
+        shm_unlink(m_ShmObjectName.c_str());
+    }
 }
 
-void* SharedMatrixBuffer::GetRawPointer() const
+uint64_t* SharedMatrixBuffer::GetRawPointer() const
 {
-    return m_RawPointer; // Return the pointer to the shared memory
+    return static_cast<uint64_t*>(m_RawPointer);
 }
 
 uint32_t SharedMatrixBuffer::RowCount() const
 {
-    return m_NumRows; // Return number of rows
+    return m_NumRows;
 }
 
 uint32_t SharedMatrixBuffer::ColumnCount() const
 {
-    return m_NumColumns; // Return number of columns
+    return m_NumColumns;
 }
 
 std::string SharedMatrixBuffer::GetName() const
 {
-    return m_ShmObjectName; // Return the shared memory name
+    return m_ShmObjectName;
 }
 
 uint32_t SharedMatrixBuffer::GetElementCount() const
@@ -92,14 +133,4 @@ std::string SharedMatrixBuffer::CreateShmObjectName(uint32_t uniqueId, uint32_t 
     std::ostringstream oss;
     oss << "transpose_client_uid{" << uniqueId << "}_k{" << k << "}";
     return oss.str();
-}
-
-
-void SharedMatrixBuffer::unlink()
-{
-    if (m_FileDescriptor != -1)
-    {
-        shm_unlink(m_ShmObjectName.c_str());
-        close(m_FileDescriptor);
-    }
 }
