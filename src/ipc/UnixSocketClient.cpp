@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <stdexcept>
 
-#include "UnixSocketClient.h"
-#include "ClientSetupMessage.h"
+#include "ipc/UnixSocketClient.h"
+#include "ipc/ClientSetupMessage.h"
 
-UnixSocketClient::UnixSocketClient(uint32_t clientID, size_t m, size_t n, size_t k) :
+UnixSocketClient::UnixSocketClient(uint32_t clientID, uint32_t m, uint32_t n, uint32_t k) :
     m_SocketPath {"/tmp/matrix_transposer_server.sock"},
     m_ClientSocket(-1)
 {

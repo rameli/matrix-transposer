@@ -1,20 +1,21 @@
 #include <iostream>
 #include <string>
 
-#include "MPSCQueueClass.h"
+#include "ipc/ClientRequest.h"
+#include "ipc/MpscQueue.h"
 
 int main()
 {
-    Item item;
+    ClientRequest request;
     MPSCQueueClass queue;
 
     int count = 0;
 
     while (count < 10) {
-        if (queue.Dequeue(item))
+        if (queue.Dequeue(request))
         {
             count++;
-            std::cout << "Count: " << count << " Value: " << item.value << std::endl;
+            std::cout << "Count: " << count << " Value: " << request.matrixIndex << std::endl;
         }
     }
 

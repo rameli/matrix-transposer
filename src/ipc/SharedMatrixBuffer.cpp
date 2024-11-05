@@ -4,10 +4,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "SharedMatrixBuffer.h"
+#include "ipc/SharedMatrixBuffer.h"
 
 
-SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, size_t m, size_t n, size_t k) :
+SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k) :
     m_FileDescriptor(-1),
     m_RawPointer(nullptr),
     m_NumRows(1UL << m),
@@ -62,12 +62,12 @@ void* SharedMatrixBuffer::GetRawPointer() const
     return m_RawPointer; // Return the pointer to the shared memory
 }
 
-size_t SharedMatrixBuffer::RowCount() const
+uint32_t SharedMatrixBuffer::RowCount() const
 {
     return m_NumRows; // Return number of rows
 }
 
-size_t SharedMatrixBuffer::ColumnCount() const
+uint32_t SharedMatrixBuffer::ColumnCount() const
 {
     return m_NumColumns; // Return number of columns
 }
@@ -77,7 +77,7 @@ std::string SharedMatrixBuffer::GetName() const
     return m_ShmObjectName; // Return the shared memory name
 }
 
-size_t SharedMatrixBuffer::GetElementCount() const
+uint32_t SharedMatrixBuffer::GetElementCount() const
 {
     return m_NumRows * m_NumColumns;
 }
@@ -87,7 +87,7 @@ size_t SharedMatrixBuffer::GetBufferSizeInBytes() const
     return m_BufferBytes;
 }
 
-std::string SharedMatrixBuffer::CreateShmObjectName(uint32_t uniqueId, size_t k)
+std::string SharedMatrixBuffer::CreateShmObjectName(uint32_t uniqueId, uint32_t k)
 {
     std::ostringstream oss;
     oss << "transpose_client_uid{" << uniqueId << "}_k{" << k << "}";

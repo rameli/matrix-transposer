@@ -2,8 +2,8 @@
 #include <memory>
 #include <thread>
 
-#include "UnixSocketServer.h"
-#include "UnixSocketClient.h"
+#include "ipc/UnixSocketServer.h"
+#include "ipc/UnixSocketClient.h"
 
 TEST(UnixSocketsTestSuite, ServerInitTearDown)
 {

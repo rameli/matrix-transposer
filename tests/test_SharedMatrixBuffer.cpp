@@ -8,7 +8,7 @@
 #include <thread>
 #include <vector>
 
-#include "SharedMatrixBuffer.h"
+#include "ipc/SharedMatrixBuffer.h"
 
 static std::string CreateSharedMatrixBufferShmFilename(uint32_t uniqueId, size_t k)
 {

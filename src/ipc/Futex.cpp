@@ -11,7 +11,7 @@
 #include <cstring>
 #include <atomic>
 
-#include "Futex.h"
+#include "ipc/Futex.h"
 
 static constexpr size_t CACHE_LINE_SIZE = 64;
 

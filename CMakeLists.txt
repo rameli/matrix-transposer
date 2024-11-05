@@ -21,13 +21,13 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 # -------------------------------------------------------
 add_library(ipc SHARED
     src/ipc/Futex.cpp
-    src/ipc/MPSCQueueClass.cpp
+    src/ipc/MpscQueue.cpp
     src/ipc/SharedMatrixBuffer.cpp
     src/ipc/UnixSocketClient.cpp
     src/ipc/UnixSocketServer.cpp
 )
 
-target_include_directories(ipc PUBLIC include/ipc)
+target_include_directories(ipc PUBLIC include)
 
 # -------------------------------------------------------
 # Executables

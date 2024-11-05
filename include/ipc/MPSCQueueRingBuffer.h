@@ -2,21 +2,18 @@
 
 #include <atomic>
 #include <cstddef>
-#include <set>
+
+#include "ClientRequest.h"
 
 constexpr size_t BUFFER_SIZE = 1024;
 constexpr size_t CACHE_LINE_SIZE = 64;
 
-struct Item
-{
-    int value;
-};
 
 struct alignas(CACHE_LINE_SIZE) Node
 {
     std::atomic<size_t> sequence;
-    Item data;
-    char padding[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>) - sizeof(Item)];
+    ClientRequest data;
+    char padding[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>) - sizeof(ClientRequest)];
 };
 
 struct alignas(CACHE_LINE_SIZE) MPSCQueue
@@ -29,25 +26,3 @@ struct alignas(CACHE_LINE_SIZE) MPSCQueue
     size_t mask;
     Node buffer[BUFFER_SIZE];
 };
-
-
-class MPSCQueueClass
-{
-public:
-    MPSCQueueClass();
-    ~MPSCQueueClass();
-
-    void Enqueue(const Item& item);
-    bool Dequeue(Item& item);
-
-private:
-    void CreateSharedMemory();
-    void DetachSharedMemory();
-    void InitializeQueue();
-
-    int m_FileDescriptor;
-
-    MPSCQueue* m_Queue;
-};
-
-

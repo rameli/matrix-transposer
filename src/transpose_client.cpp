@@ -1,11 +1,11 @@
 #include <iostream>
 #include <string>
 
-#include "MPSCQueueClass.h"
+#include "ipc/ClientRequest.h"
+#include "ipc/MpscQueue.h"
 
 int main()
 {
-    Item item;
     MPSCQueueClass queue;
 
     int count = 0;

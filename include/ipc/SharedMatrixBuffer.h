@@ -32,7 +32,7 @@ public:
      * 
      * @throw std::runtime_error If shared memory creation or mapping fails.
      */
-    SharedMatrixBuffer(uint32_t uniqueId, size_t m, size_t n, size_t k);
+    SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k);
     
     /**
      * @brief Destroys the SharedMatrixBuffer instance and releases resources.
@@ -53,14 +53,14 @@ public:
      * 
      * @return The number of rows, calculated as 2^m.
      */
-    size_t RowCount() const;
+    uint32_t RowCount() const;
 
     /**
      * @brief Gets the number of columns in the matrix.
      * 
      * @return The number of columns, calculated as 2^n.
      */
-    size_t ColumnCount() const;
+    uint32_t ColumnCount() const;
 
     /**
      * @brief Gets the name of the shared memory object.
@@ -74,7 +74,7 @@ public:
      * 
      * @return The number of elements in the matrix, calculated as 2^(m+n).
      */
-    size_t GetElementCount() const;
+    uint32_t GetElementCount() const;
 
     /**
      * @brief Gets the size of the shared memory buffer in bytes.
@@ -90,7 +90,7 @@ public:
      * @param k An arbitrary index used in the shared memory object filename.
      * @return A string containing the formatted name of the shared memory object.
      */
-    static std::string CreateShmObjectName(uint32_t uniqueId, size_t k);
+    static std::string CreateShmObjectName(uint32_t uniqueId, uint32_t k);
 
 private:
     uint32_t m_UniqueId;         ///< Unique identifier for the shared memory object.
@@ -98,9 +98,9 @@ private:
     size_t m_BufferBytes;        ///< Size of the shared memory in bytes.
     int m_FileDescriptor;        ///< File descriptor for the shared memory object.
     void* m_RawPointer;          ///< Pointer to the mapped shared memory.
-    size_t m_NumRows;            ///< Number of rows in the matrix.
-    size_t m_NumColumns;         ///< Number of columns in the matrix.
-    size_t m_BufferIndex;        ///< Index used in the shared memory object filename.
+    uint32_t m_NumRows;          ///< Number of rows in the matrix.
+    uint32_t m_NumColumns;       ///< Number of columns in the matrix.
+    uint32_t m_BufferIndex;      ///< Index used in the shared memory object filename.
 
     /**
      * @brief Unlinks the shared memory object.

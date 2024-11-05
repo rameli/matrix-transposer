@@ -1,4 +1,3 @@
-#include "MPSCQueueClass.h"
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -8,9 +7,11 @@
 #include <cstring>
 #include <cerrno>
 
-constexpr const char* SHM_NAME = "/mpsc_queue_shm";
+#include "ipc/MpscQueue.h"
 
-MPSCQueueClass::MPSCQueueClass()
+MPSCQueueClass::MPSCQueueClass() :
+    m_FileDescriptor(-1),
+    m_ShmObjectName {"/matrix_transposer_queue"}
 {
     CreateSharedMemory();
     InitializeQueue();
@@ -23,7 +24,7 @@ MPSCQueueClass::~MPSCQueueClass()
 
 void MPSCQueueClass::CreateSharedMemory()
 {
-    m_FileDescriptor = shm_open(SHM_NAME, O_RDWR | O_CREAT, 0666);
+    m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_RDWR | O_CREAT, 0666);
 
     if (m_FileDescriptor < 0)
     {
@@ -32,13 +33,13 @@ void MPSCQueueClass::CreateSharedMemory()
 
     if (ftruncate(m_FileDescriptor, sizeof(MPSCQueue)) == -1)
     {
-        shm_unlink(SHM_NAME);
+        shm_unlink(m_ShmObjectName.c_str());
         throw std::runtime_error("ftruncate error");
     }
 
     m_Queue = (MPSCQueue*)mmap(nullptr, sizeof(MPSCQueue), PROT_READ | PROT_WRITE, MAP_SHARED, m_FileDescriptor, 0);
     if (m_Queue == MAP_FAILED) {
-        shm_unlink(SHM_NAME);
+        shm_unlink(m_ShmObjectName.c_str());
         close(m_FileDescriptor);
         throw std::runtime_error("mmap error");
     }
@@ -61,7 +62,7 @@ void MPSCQueueClass::InitializeQueue() {
     }
 }
 
-void MPSCQueueClass::Enqueue(const Item& item)
+void MPSCQueueClass::Enqueue(const ClientRequest& request)
 {
     size_t pos = m_Queue->enqueue_pos.fetch_add(1, std::memory_order_relaxed);
     Node* node = &m_Queue->buffer[pos & m_Queue->mask];
@@ -74,17 +75,17 @@ void MPSCQueueClass::Enqueue(const Item& item)
         diff = (intptr_t)seq - (intptr_t)pos;
     }
 
-    node->data = item;
+    node->data = request;
     node->sequence.store(pos + 1, std::memory_order_release);
 }
 
-bool MPSCQueueClass::Dequeue(Item& item) {
+bool MPSCQueueClass::Dequeue(ClientRequest& request) {
     Node* node = &m_Queue->buffer[m_Queue->dequeue_pos & m_Queue->mask];
     size_t seq = node->sequence.load(std::memory_order_acquire);
     intptr_t diff = (intptr_t)seq - (intptr_t)(m_Queue->dequeue_pos + 1);
 
     if (diff == 0) {
-        item = node->data;
+        request = node->data;
         node->sequence.store(m_Queue->dequeue_pos + m_Queue->capacity, std::memory_order_release);
         m_Queue->dequeue_pos++;
         return true;

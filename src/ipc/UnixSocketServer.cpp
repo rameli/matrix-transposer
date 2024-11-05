@@ -6,8 +6,8 @@
 #include <unistd.h>
 #include <mutex>
 
-#include "ClientSetupMessage.h"
-#include "UnixSocketServer.h"
+#include "ipc/ClientSetupMessage.h"
+#include "ipc/UnixSocketServer.h"
 
 UnixSocketServer::UnixSocketServer() :
     m_Running {false},
