@@ -9,49 +9,86 @@
 
 #include "ipc/MpscQueue.h"
 
-MPSCQueueClass::MPSCQueueClass() :
-    m_FileDescriptor(-1),
-    m_ShmObjectName {"/matrix_transposer_queue"}
+MpscQueue::MpscQueue(uint32_t size, Endpoint endpoint) :
+    m_FileDescriptor{-1},
+    m_ShmObjectName {"/matrix_transposer_server_queue"},
+    m_Size{size},
+    m_Endpoint{endpoint}
 {
-    CreateSharedMemory();
+    CreateSharedMemory(m_Endpoint);
     InitializeQueue();
 }
 
-MPSCQueueClass::~MPSCQueueClass()
+MpscQueue::~MpscQueue()
 {
-    DetachSharedMemory();
+    if (m_Queue != MAP_FAILED && m_Queue != nullptr)
+    {
+        munmap(m_Queue, sizeof(m_Queue));
+    }
+
+    // Only the client should unlink the shared memory object
+    if (m_Endpoint == Endpoint::SERVER)
+    {
+        shm_unlink(m_ShmObjectName.c_str());
+    }
 }
 
-void MPSCQueueClass::CreateSharedMemory()
+void MpscQueue::CreateSharedMemory(Endpoint endpoint)
 {
-    m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_RDWR | O_CREAT, 0666);
-
-    if (m_FileDescriptor < 0)
+    // Only the server should initialize the shared memory object for the futex.
+    // If the object already exists, unlink it and try again.
+    if (m_Endpoint == Endpoint::SERVER)
     {
-        throw std::runtime_error("shm_open error");
-    } 
+        // Client opens the mutex shared memory object with the O_EXCL flag
+        m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR | O_EXCL, 0666);
 
-    if (ftruncate(m_FileDescriptor, sizeof(MPSCQueue)) == -1)
+        if (m_FileDescriptor < 0)
+        {
+            if (errno == EEXIST) {
+                shm_unlink(m_ShmObjectName.c_str());
+                m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
+            }
+            if (m_FileDescriptor < 0) {
+                if (m_FileDescriptor == -1)
+                {
+                    throw std::runtime_error("Failed to create shared memory object for client process");
+                }
+            }
+        }
+    }
+    else if (m_Endpoint == Endpoint::CLIENT)
     {
+        // Server opens the mutex shared memory object without the O_EXCL flag
+        m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR, 0666);
+
+        if (m_FileDescriptor < 0)
+        {
+            throw std::runtime_error("Failed to create shared memory object for client process");
+        }
+    }
+
+    if (ftruncate(m_FileDescriptor, sizeof(MpscQueueRingBuffer)) == -1)
+    {
+        // Destructor won't be called if an exception is thrown in the constructor
+        close(m_FileDescriptor);
         shm_unlink(m_ShmObjectName.c_str());
         throw std::runtime_error("ftruncate error");
     }
 
-    m_Queue = (MPSCQueue*)mmap(nullptr, sizeof(MPSCQueue), PROT_READ | PROT_WRITE, MAP_SHARED, m_FileDescriptor, 0);
+    m_Queue = (MpscQueueRingBuffer*)mmap(nullptr, sizeof(MpscQueueRingBuffer), PROT_READ | PROT_WRITE, MAP_SHARED, m_FileDescriptor, 0);
     if (m_Queue == MAP_FAILED) {
-        shm_unlink(m_ShmObjectName.c_str());
+        // Destructor won't be called if an exception is thrown in the constructor
         close(m_FileDescriptor);
+        shm_unlink(m_ShmObjectName.c_str());
         throw std::runtime_error("mmap error");
     }
+
+    // According to https://man7.org/linux/man-pages/man3/shm_open.3.html
+    // "After a call to mmap(2) the file descriptor may be closed without affecting the memory mapping."
     close(m_FileDescriptor);
 }
 
-void MPSCQueueClass::DetachSharedMemory() {
-    munmap(m_Queue, sizeof(MPSCQueue));
-    // shm_unlink(SHM_NAME);
-}
-
-void MPSCQueueClass::InitializeQueue() {
+void MpscQueue::InitializeQueue() {
     m_Queue->enqueue_pos.store(0, std::memory_order_relaxed);
     m_Queue->dequeue_pos = 0;
     m_Queue->capacity = BUFFER_SIZE;
@@ -62,7 +99,7 @@ void MPSCQueueClass::InitializeQueue() {
     }
 }
 
-void MPSCQueueClass::Enqueue(const ClientRequest& request)
+void MpscQueue::Enqueue(const ClientRequest& request)
 {
     size_t pos = m_Queue->enqueue_pos.fetch_add(1, std::memory_order_relaxed);
     Node* node = &m_Queue->buffer[pos & m_Queue->mask];
@@ -79,7 +116,7 @@ void MPSCQueueClass::Enqueue(const ClientRequest& request)
     node->sequence.store(pos + 1, std::memory_order_release);
 }
 
-bool MPSCQueueClass::Dequeue(ClientRequest& request) {
+bool MpscQueue::Dequeue(ClientRequest& request) {
     Node* node = &m_Queue->buffer[m_Queue->dequeue_pos & m_Queue->mask];
     size_t seq = node->sequence.load(std::memory_order_acquire);
     intptr_t diff = (intptr_t)seq - (intptr_t)(m_Queue->dequeue_pos + 1);

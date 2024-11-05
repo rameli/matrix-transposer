@@ -67,6 +67,7 @@ SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n
     {
         // Destructor won't be called if an exception is thrown in the constructor
         close(m_FileDescriptor);
+        shm_unlink(m_ShmObjectName.c_str());
         throw std::runtime_error("Failed to set shared memory size");
     }
 
@@ -76,6 +77,7 @@ SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n
     {
         // Destructor won't be called if an exception is thrown in the constructor
         close(m_FileDescriptor);
+        shm_unlink(m_ShmObjectName.c_str());
         throw std::runtime_error("Failed to map shared memory");
     }
 

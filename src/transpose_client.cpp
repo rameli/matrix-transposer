@@ -6,7 +6,7 @@
 
 int main()
 {
-    MPSCQueueClass queue;
+    MpscQueueClass queue;
 
     int count = 0;
 

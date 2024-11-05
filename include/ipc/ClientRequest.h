@@ -8,7 +8,7 @@
  *
  * This structure holds information about a client's request,
  * including the unique identifier for the client and the
- * index of the matrix associated with the request. 
+ * index of the matrix associated with the request.
  */
 struct ClientRequest
 {

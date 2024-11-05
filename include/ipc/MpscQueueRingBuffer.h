@@ -8,7 +8,6 @@
 constexpr size_t BUFFER_SIZE = 1024;
 constexpr size_t CACHE_LINE_SIZE = 64;
 
-
 struct alignas(CACHE_LINE_SIZE) Node
 {
     std::atomic<size_t> sequence;
@@ -16,7 +15,7 @@ struct alignas(CACHE_LINE_SIZE) Node
     char padding[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>) - sizeof(ClientRequest)];
 };
 
-struct alignas(CACHE_LINE_SIZE) MPSCQueue
+struct alignas(CACHE_LINE_SIZE) MpscQueueRingBuffer
 {
     std::atomic<size_t> enqueue_pos;
     char pad1[CACHE_LINE_SIZE - sizeof(std::atomic<size_t>)];

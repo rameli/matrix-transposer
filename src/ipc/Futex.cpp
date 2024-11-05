@@ -58,6 +58,7 @@ Futex::Futex(uint32_t uniqueId, Endpoint endpoint) :
     {
         // Destructor won't be called if an exception is thrown in the constructor
         close(m_FileDescriptor);
+        shm_unlink(m_ShmObjectName.c_str());
         throw std::runtime_error("Failed to set size of shared memory for ID: " + std::to_string(m_UniqueId) + "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
     }
 
@@ -67,6 +68,7 @@ Futex::Futex(uint32_t uniqueId, Endpoint endpoint) :
     {
         // Destructor won't be called if an exception is thrown in the constructor
         close(m_FileDescriptor);
+        shm_unlink(m_ShmObjectName.c_str());
         throw std::runtime_error("Failed to mmap shared memory for futex for ID: " + std::to_string(m_UniqueId) + "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
     }
 
