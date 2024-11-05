@@ -6,12 +6,13 @@
 
 int main(int argc, char* argv[])
 {
-    MpscQueue queue(Endpoint::CLIENT);
     ClientRequest request;
 
     int count = 0;
 
     request.clientId = std::stoi(argv[1]);
+    MpscQueue queue(request.clientId, Endpoint::CLIENT);
+
 
     while (1) {
         request.matrixIndex = count;

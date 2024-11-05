@@ -18,11 +18,10 @@ public:
      *
      * Initializes the Mpsc queue with the specified endpoint.
      *
+     * @param clientId The client ID for the endpoint.
      * @param endpoint The endpoint used to owner the shared memory object.
-     * 
-     * @note The size parameter is ignored if the endpoint is CLIENT.
      */
-    MpscQueue(Endpoint endpoint);
+    MpscQueue(uint32_t clientId, Endpoint endpoint);
 
     /**
      * @brief Destructs the MpscQueue instance.
@@ -81,4 +80,5 @@ private:
     std::string m_ShmObjectName;   ///< The name of the shared memory object.
     MpscQueueRingBuffer* m_Queue;  ///< Pointer to the Mpsc queue implementation.
     Endpoint m_Endpoint;           ///< The role of the endpoint in the network connection.
+    uint32_t m_ClientId;           ///< The client ID for the endpoint.
 };

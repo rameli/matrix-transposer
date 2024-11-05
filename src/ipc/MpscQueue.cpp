@@ -9,11 +9,18 @@
 
 #include "ipc/MpscQueue.h"
 
-MpscQueue::MpscQueue(Endpoint endpoint) :
-    m_FileDescriptor{-1},
-    m_ShmObjectName {"/matrix_transposer_server_queue"},
-    m_Endpoint{endpoint}
+static std::string GetShmObjectName(uint32_t clientId)
 {
+
+    return "/matrix_transposer_queue_" + std::to_string(clientId);
+}
+
+MpscQueue::MpscQueue(uint32_t clientId, Endpoint endpoint) :
+    m_FileDescriptor{-1},
+    m_Endpoint{endpoint},
+    m_ClientId{clientId}
+{
+    m_ShmObjectName = GetShmObjectName(m_ClientId);
     CreateSharedMemory(m_Endpoint);
     InitializeQueue();
 }
