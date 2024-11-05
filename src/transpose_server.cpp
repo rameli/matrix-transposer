@@ -1,19 +1,22 @@
-#include "UnixSocketServer.h"
 #include <iostream>
-#include <chrono>
 #include <string>
 
-int main() {
-    {
-    UnixSocketServer server;
-    std::cout << "Server is running..." << std::endl;
+#include "MPSCQueueClass.h"
 
-    std::string a;
-    std::getline(std::cin, a);
-    std::cout << "Server is stopping..." << std::endl;
+int main()
+{
+    Item item;
+    MPSCQueueClass queue;
+
+    int count = 0;
+
+    while (count < 10) {
+        if (queue.Dequeue(item))
+        {
+            count++;
+            std::cout << "Count: " << count << " Value: " << item.value << std::endl;
+        }
     }
 
-    // server.stop();
-    std::cout << "Server stopped." << std::endl;
     return 0;
 }

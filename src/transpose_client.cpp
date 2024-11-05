@@ -1,26 +1,18 @@
 #include <iostream>
-#include <memory>
-#include <unistd.h>
+#include <string>
 
-#include "UnixSocketClient.h"
+#include "MPSCQueueClass.h"
 
 int main()
 {
-    std::unique_ptr<UnixSocketClient> pClient;
-    uint32_t clientID = getpid();
-    size_t m = 3;
-    size_t n = 33;
-    size_t k = 333;
+    Item item;
+    MPSCQueueClass queue;
 
-    try
-    {
-        pClient = std::make_unique<UnixSocketClient>(clientID, m, n, k);
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return 1;
-    }
+    int count = 0;
+
+    queue.Enqueue({101});
+    queue.Enqueue({102});
+    // queue.Enqueue({103});
 
     return 0;
 }
