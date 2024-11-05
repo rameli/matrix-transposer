@@ -33,7 +33,7 @@ MpscQueue::~MpscQueue()
     }
 
     // Only the client should unlink the shared memory object
-    if (m_Endpoint == Endpoint::SERVER)
+    if (m_Endpoint == Endpoint::CLIENT)
     {
         shm_unlink(m_ShmObjectName.c_str());
     }
@@ -43,7 +43,7 @@ void MpscQueue::CreateSharedMemory(Endpoint endpoint)
 {
     // Only the server should initialize the shared memory object for the futex.
     // If the object already exists, unlink it and try again.
-    if (m_Endpoint == Endpoint::SERVER)
+    if (m_Endpoint == Endpoint::CLIENT)
     {
         // Client opens the mutex shared memory object with the O_EXCL flag
         m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR | O_EXCL, 0666);
@@ -62,7 +62,7 @@ void MpscQueue::CreateSharedMemory(Endpoint endpoint)
             }
         }
     }
-    else if (m_Endpoint == Endpoint::CLIENT)
+    else if (m_Endpoint == Endpoint::SERVER)
     {
         // Server opens the mutex shared memory object without the O_EXCL flag
         m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR, 0666);
