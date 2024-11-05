@@ -21,25 +21,51 @@ Futex::Futex(uint32_t uniqueId, Endpoint endpoint) :
 {
     m_ShmObjectName = CreateShmObjectName(m_UniqueId);
 
-    m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR, 0666);
-    if (m_FileDescriptor == -1)
+    // Only the client should initialize the shared memory object for the futex.
+    // If the object already exists, unlink it and try again.
+    if (m_Endpoint == Endpoint::CLIENT)
     {
-        throw std::runtime_error("Failed to create shared memory object for ID: " + std::to_string(m_UniqueId) +
-            "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
+        // Client opens the mutex shared memory object with the O_EXCL flag
+        m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR | O_EXCL, 0666);
+
+        if (m_FileDescriptor < 0)
+        {
+            if (errno == EEXIST) {
+                shm_unlink(m_ShmObjectName.c_str());
+                m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
+            }
+            if (m_FileDescriptor < 0) {
+                if (m_FileDescriptor == -1)
+                {
+                    throw std::runtime_error("Failed to create shared memory object for ID (CLIENT): " + std::to_string(m_UniqueId) + "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
+                }
+            }
+        }
+    }
+    else if (m_Endpoint == Endpoint::SERVER)
+    {
+        // Server opens the mutex shared memory object without the O_EXCL flag
+        m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_CREAT | O_RDWR, 0666);
+
+        if (m_FileDescriptor < 0)
+        {
+            throw std::runtime_error("Failed to open shared memory object for ID (SERVER): " + std::to_string(m_UniqueId) + "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
+        }
     }
 
     // Set size of shared memory object
     if (ftruncate(m_FileDescriptor, CACHE_LINE_SIZE) == -1)
     {
+        // Destructor won't be called if an exception is thrown in the constructor
         close(m_FileDescriptor);
         throw std::runtime_error("Failed to set size of shared memory for ID: " + std::to_string(m_UniqueId) + "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
     }
 
     // Map shared memory into process address space
     void* ptr = mmap(nullptr, CACHE_LINE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, m_FileDescriptor, 0);
-
     if (ptr == MAP_FAILED)
     {
+        // Destructor won't be called if an exception is thrown in the constructor
         close(m_FileDescriptor);
         throw std::runtime_error("Failed to mmap shared memory for futex for ID: " + std::to_string(m_UniqueId) + "errno(" + std::to_string(errno) + "): " + std::string(strerror(errno)));
     }
