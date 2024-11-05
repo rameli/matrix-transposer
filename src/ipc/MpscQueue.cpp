@@ -109,6 +109,7 @@ void MpscQueue::Enqueue(const ClientRequest& request)
     while (diff != 0) {
         seq = node->sequence.load(std::memory_order_acquire);
         diff = (intptr_t)seq - (intptr_t)pos;
+        usleep(1);
     }
 
     node->data = request;
