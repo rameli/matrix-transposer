@@ -9,10 +9,9 @@
 
 #include "ipc/MpscQueue.h"
 
-MpscQueue::MpscQueue(uint32_t size, Endpoint endpoint) :
+MpscQueue::MpscQueue(Endpoint endpoint) :
     m_FileDescriptor{-1},
     m_ShmObjectName {"/matrix_transposer_server_queue"},
-    m_Size{size},
     m_Endpoint{endpoint}
 {
     CreateSharedMemory(m_Endpoint);

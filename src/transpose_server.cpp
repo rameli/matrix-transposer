@@ -7,11 +7,11 @@
 int main()
 {
     ClientRequest request;
-    MpscQueueClass queue;
+    MpscQueue queue(Endpoint::SERVER);
 
     int count = 0;
 
-    while (count < 10) {
+    while (count < 10000) {
         if (queue.Dequeue(request))
         {
             count++;

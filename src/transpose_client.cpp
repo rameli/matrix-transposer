@@ -6,13 +6,18 @@
 
 int main()
 {
-    MpscQueueClass queue;
+    MpscQueue queue(Endpoint::CLIENT);
+    ClientRequest request;
 
     int count = 0;
 
-    queue.Enqueue({101});
-    queue.Enqueue({102});
-    // queue.Enqueue({103});
+    while (count < 10000) {
+        request.clientId = count;
+        request.matrixIndex = count+3;
+        queue.Enqueue(request);
+        count++;
+        std::cout << "Count: " << count << std::endl;
+    }
 
     return 0;
 }
