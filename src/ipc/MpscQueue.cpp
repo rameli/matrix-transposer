@@ -88,8 +88,8 @@ void MpscQueue::CreateSharedMemory(Endpoint endpoint)
 }
 
 void MpscQueue::InitializeQueue() {
-    m_Queue->enqueue_pos.store(0, std::memory_order_relaxed);
-    m_Queue->dequeue_pos = 0;
+    m_Queue->enqueuePosition.store(0, std::memory_order_relaxed);
+    m_Queue->dequeuePosition = 0;
     m_Queue->capacity = BUFFER_SIZE;
     m_Queue->mask = BUFFER_SIZE - 1;
 
@@ -100,7 +100,7 @@ void MpscQueue::InitializeQueue() {
 
 void MpscQueue::Enqueue(const ClientRequest& request)
 {
-    size_t pos = m_Queue->enqueue_pos.fetch_add(1, std::memory_order_relaxed);
+    size_t pos = m_Queue->enqueuePosition.fetch_add(1, std::memory_order_relaxed);
     Node* node = &m_Queue->buffer[pos & m_Queue->mask];
 
     size_t seq = node->sequence.load(std::memory_order_acquire);
@@ -116,14 +116,14 @@ void MpscQueue::Enqueue(const ClientRequest& request)
 }
 
 bool MpscQueue::Dequeue(ClientRequest& request) {
-    Node* node = &m_Queue->buffer[m_Queue->dequeue_pos & m_Queue->mask];
+    Node* node = &m_Queue->buffer[m_Queue->dequeuePosition & m_Queue->mask];
     size_t seq = node->sequence.load(std::memory_order_acquire);
-    intptr_t diff = (intptr_t)seq - (intptr_t)(m_Queue->dequeue_pos + 1);
+    intptr_t diff = (intptr_t)seq - (intptr_t)(m_Queue->dequeuePosition + 1);
 
     if (diff == 0) {
         request = node->data;
-        node->sequence.store(m_Queue->dequeue_pos + m_Queue->capacity, std::memory_order_release);
-        m_Queue->dequeue_pos++;
+        node->sequence.store(m_Queue->dequeuePosition + m_Queue->capacity, std::memory_order_release);
+        m_Queue->dequeuePosition++;
         return true;
     } else {
         return false;

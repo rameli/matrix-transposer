@@ -6,7 +6,6 @@
 
 #include "ipc/SharedMatrixBuffer.h"
 
-
 SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k, Endpoint endpoint) :
     m_FileDescriptor(-1),
     m_RawPointer(nullptr),

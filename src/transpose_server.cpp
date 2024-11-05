@@ -11,11 +11,11 @@ int main()
 
     int count = 0;
 
-    while (count < 10000) {
+    while (1) {
         if (queue.Dequeue(request))
         {
             count++;
-            std::cout << "Count: " << count << " Value: " << request.matrixIndex << std::endl;
+            std::cout << "Count: " << count << " Client ID: " << request.clientId << " Matrix Index: " << request.matrixIndex << std::endl;
         }
     }
 
