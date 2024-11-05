@@ -4,9 +4,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "MatrixBuffer.h"
+#include "SharedMatrixBuffer.h"
 
-MatrixBuffer::MatrixBuffer(uint32_t uniqueId, size_t m, size_t n, size_t k) :
+
+SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, size_t m, size_t n, size_t k) :
     m_FileDescriptor(-1),
     m_RawPointer(nullptr),
     m_NumRows(1UL << m),
@@ -47,7 +48,7 @@ MatrixBuffer::MatrixBuffer(uint32_t uniqueId, size_t m, size_t n, size_t k) :
     }
 }
 
-MatrixBuffer::~MatrixBuffer()
+SharedMatrixBuffer::~SharedMatrixBuffer()
 {
     if (m_RawPointer != MAP_FAILED && m_RawPointer != nullptr)
     {
@@ -56,37 +57,37 @@ MatrixBuffer::~MatrixBuffer()
     unlink(); // Unlink the shared memory object
 }
 
-void* MatrixBuffer::GetRawPointer() const
+void* SharedMatrixBuffer::GetRawPointer() const
 {
     return m_RawPointer; // Return the pointer to the shared memory
 }
 
-size_t MatrixBuffer::RowCount() const
+size_t SharedMatrixBuffer::RowCount() const
 {
     return m_NumRows; // Return number of rows
 }
 
-size_t MatrixBuffer::ColumnCount() const
+size_t SharedMatrixBuffer::ColumnCount() const
 {
     return m_NumColumns; // Return number of columns
 }
 
-std::string MatrixBuffer::GetName() const
+std::string SharedMatrixBuffer::GetName() const
 {
     return m_ShmObjectName; // Return the shared memory name
 }
 
-size_t MatrixBuffer::GetElementCount() const
+size_t SharedMatrixBuffer::GetElementCount() const
 {
     return m_NumRows * m_NumColumns;
 }
 
-size_t MatrixBuffer::GetBufferSizeInBytes() const
+size_t SharedMatrixBuffer::GetBufferSizeInBytes() const
 {
     return m_BufferBytes;
 }
 
-std::string MatrixBuffer::CreateShmObjectName(uint32_t uniqueId, size_t k)
+std::string SharedMatrixBuffer::CreateShmObjectName(uint32_t uniqueId, size_t k)
 {
     std::ostringstream oss;
     oss << "transpose_client_uid{" << uniqueId << "}_k{" << k << "}";
@@ -94,7 +95,7 @@ std::string MatrixBuffer::CreateShmObjectName(uint32_t uniqueId, size_t k)
 }
 
 
-void MatrixBuffer::unlink()
+void SharedMatrixBuffer::unlink()
 {
     if (m_FileDescriptor != -1)
     {

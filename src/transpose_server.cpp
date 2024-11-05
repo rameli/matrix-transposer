@@ -4,10 +4,8 @@
 #include <string>
 
 int main() {
-    const std::string socketPath = "/tmp/ssd_server.sock";
-
     {
-    UnixSocketServer server(socketPath);
+    UnixSocketServer server;
     std::cout << "Server is running..." << std::endl;
 
     std::string a;

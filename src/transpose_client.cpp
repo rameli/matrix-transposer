@@ -1,26 +1,26 @@
+#include <iostream>
+#include <memory>
+#include <unistd.h>
+
 #include "UnixSocketClient.h"
-#include <thread>
-#include <chrono>
 
-void clientFunction(const std::string& socketPath, const std::string& clientName) {
-    UnixSocketClient client(socketPath);
-    client.connectToServer();
+int main()
+{
+    std::unique_ptr<UnixSocketClient> pClient;
+    uint32_t clientID = getpid();
+    size_t m = 3;
+    size_t n = 33;
+    size_t k = 333;
 
-    for (int i = 0; i < 5; ++i) {
-        client.sendMessage(clientName + " says hello " + std::to_string(i));
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+    try
+    {
+        pClient = std::make_unique<UnixSocketClient>(clientID, m, n, k);
     }
-}
-
-int main() {
-    const std::string socketPath = "/tmp/ssd_server.sock";
-
-    // Start multiple clients
-    std::thread client1(clientFunction, socketPath, "Client 1");
-    std::thread client2(clientFunction, socketPath, "Client 2");
-
-    client1.join();
-    client2.join();
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
 
     return 0;
 }

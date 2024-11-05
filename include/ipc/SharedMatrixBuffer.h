@@ -9,18 +9,18 @@
 #include <sstream>
 
 /**
- * @class MatrixBuffer
+ * @class SharedMatrixBuffer
  * @brief A class that manages a shared memory buffer for a 2^m by 2^n matrix of uint64_t elements.
  * 
  * This class provides a way to allocate and manage shared memory for a matrix, allowing multiple processes
  * to access the same data. The memory is allocated in a way that ensures proper cleanup when the object is
  * destroyed, adhering to the RAII principle.
  */
-class MatrixBuffer
+class SharedMatrixBuffer
 {
 public:
     /**
-     * @brief Constructs a MatrixBuffer instance.
+     * @brief Constructs a SharedMatrixBuffer instance.
      * 
      * @param uniqueId The unique identifier for the shared memory object.
      * @param m The exponent for the number of rows, resulting in 2^m rows.
@@ -32,14 +32,14 @@ public:
      * 
      * @throw std::runtime_error If shared memory creation or mapping fails.
      */
-    MatrixBuffer(uint32_t uniqueId, size_t m, size_t n, size_t k);
+    SharedMatrixBuffer(uint32_t uniqueId, size_t m, size_t n, size_t k);
     
     /**
-     * @brief Destroys the MatrixBuffer instance and releases resources.
+     * @brief Destroys the SharedMatrixBuffer instance and releases resources.
      * 
      * The destructor unmaps the shared memory and unlinks it from the system.
      */
-    ~MatrixBuffer();
+    ~SharedMatrixBuffer();
 
     /**
      * @brief Gets a pointer to the shared memory buffer.

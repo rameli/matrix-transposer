@@ -8,21 +8,26 @@ project(matrix-transposer)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Set the build type to Debug by default
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+# Add debug information flags
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+
 # -------------------------------------------------------
 # Shared libraries
 # -------------------------------------------------------
-add_library(IpcUtils SHARED
-    src/ipc_utils.cpp
-    src/UnixSocketServer.cpp
-    src/UnixSocketClient.cpp
+add_library(ipc SHARED
+    src/ipc/Futex.cpp
+    src/ipc/MPSCQueue.cpp
+    src/ipc/SharedMatrixBuffer.cpp
+    src/ipc/UnixSocketClient.cpp
+    src/ipc/UnixSocketServer.cpp
 )
 
-add_library(MatrixBuffer SHARED
-    src/MatrixBuffer.cpp
-)
-
-target_include_directories(IpcUtils PUBLIC include)
-target_include_directories(MatrixBuffer PUBLIC include)
+target_include_directories(ipc PUBLIC include/ipc)
 
 # -------------------------------------------------------
 # Executables
@@ -37,10 +42,10 @@ set(CLIENT_SOURCES
 )
 
 add_executable(transpose_server ${SERVER_SOURCES})
-target_link_libraries(transpose_server PRIVATE MatrixBuffer IpcUtils)
+target_link_libraries(transpose_server PRIVATE ipc)
 
 add_executable(transpose_client ${CLIENT_SOURCES})
-target_link_libraries(transpose_client PRIVATE MatrixBuffer IpcUtils)
+target_link_libraries(transpose_client PRIVATE ipc)
 
 # -------------------------------------------------------
 # Add GoogleTest for testing
@@ -50,14 +55,15 @@ enable_testing()
 
 # Add test source files
 set(TEST_SOURCES
-    tests/test_MatrixBuffer.cpp
+    tests/test_Futex.cpp
+    tests/test_SharedMatrixBuffer.cpp
     tests/test_UnixSockets.cpp
 )
 
 add_executable(run_tests ${TEST_SOURCES})
 
 target_include_directories(run_tests PRIVATE include)
-target_link_libraries(run_tests PRIVATE gtest gtest_main MatrixBuffer IpcUtils)
+target_link_libraries(run_tests PRIVATE gtest gtest_main ipc)
 
 # Automatically discover tests
 include(GoogleTest)

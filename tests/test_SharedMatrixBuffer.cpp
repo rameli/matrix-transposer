@@ -8,9 +8,9 @@
 #include <thread>
 #include <vector>
 
-#include "MatrixBuffer.h"
+#include "SharedMatrixBuffer.h"
 
-static std::string CreateShmFilename(uint32_t uniqueId, size_t k)
+static std::string CreateSharedMatrixBufferShmFilename(uint32_t uniqueId, size_t k)
 {
     std::ostringstream oss;
     oss << "transpose_client_uid{" << uniqueId << "}_k{" << k << "}";
@@ -19,7 +19,7 @@ static std::string CreateShmFilename(uint32_t uniqueId, size_t k)
 
 static bool ShmObjectExists(uint32_t uniqueId, size_t k)
 {
-    std::string expectedName = CreateShmFilename(uniqueId, k);
+    std::string expectedName = CreateSharedMatrixBufferShmFilename(uniqueId, k);
 
     std::filesystem::path SHM_DIR = "/dev/shm/";
     std::filesystem::path filePath = SHM_DIR / expectedName;
@@ -39,9 +39,9 @@ TEST(MatrixBufferTestSuite, CorrectInit)
         {
             for (size_t k = 0; k < 10; k++)
             {
-                std::unique_ptr<MatrixBuffer> pMatrixBuffer;
+                std::unique_ptr<SharedMatrixBuffer> pMatrixBuffer;
                 
-                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<MatrixBuffer>(uniqueId, m, n, k));
+                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, k));
 
                 EXPECT_NE(pMatrixBuffer->GetRawPointer(), nullptr);
                 EXPECT_NE(pMatrixBuffer->GetRawPointer(), MAP_FAILED);
@@ -76,9 +76,9 @@ TEST(MatrixBufferTestSuite, AccessSharedBuffer)
         {
             for (size_t m : gRowCountExponents)
             {
-                std::unique_ptr<MatrixBuffer> pMatrixBuffer;
+                std::unique_ptr<SharedMatrixBuffer> pMatrixBuffer;
                 
-                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<MatrixBuffer>(uniqueId, m, n, k));
+                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, k));
                 EXPECT_NE(pMatrixBuffer, nullptr);
 
                 pBufferPtr = static_cast<uint64_t*>(pMatrixBuffer->GetRawPointer());
@@ -135,7 +135,7 @@ TEST(MatrixBufferTestSuite, SimultaneousAccess)
 
     for (uint32_t numSimultaneousAccess = 1; numSimultaneousAccess < 10; numSimultaneousAccess++)
     {
-        std::vector<std::unique_ptr<MatrixBuffer>> pMatrixBuffersVec;
+        std::vector<std::unique_ptr<SharedMatrixBuffer>> pMatrixBuffersVec;
 
         for (size_t n : gColumnCountExponents)
         {
@@ -145,8 +145,8 @@ TEST(MatrixBufferTestSuite, SimultaneousAccess)
                 pMatrixBuffersVec.clear();
                 for (uint32_t matrixBufferIndex = 0; matrixBufferIndex < numSimultaneousAccess; matrixBufferIndex++)
                 {
-                    std::unique_ptr<MatrixBuffer> pMatrixBuffer;
-                    ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<MatrixBuffer>(uniqueId, m, n, K));
+                    std::unique_ptr<SharedMatrixBuffer> pMatrixBuffer;
+                    ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, K));
                     EXPECT_NE(pMatrixBuffer, nullptr);
                     pMatrixBuffersVec.push_back(std::move(pMatrixBuffer));
                 }
