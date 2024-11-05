@@ -31,7 +31,7 @@ TEST(FutexTestSuite, CorrectInit)
 {
     std::unique_ptr<Futex> pFutex;
     uint32_t uniqueId = getpid();
-    ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId));
+    ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::CLIENT));
     EXPECT_EQ(ShmObjectExists(uniqueId), true);
 
 }
@@ -42,7 +42,7 @@ TEST(FutexTestSuite, CorrectInitAndDestroy)
     uint32_t uniqueId = getpid();
     
     // Create the futex
-    ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId));
+    ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::CLIENT));
     EXPECT_EQ(ShmObjectExists(uniqueId), true);
 
     // Destroy the futex
@@ -55,22 +55,24 @@ TEST(FutexTestSuite, TwoThreads)
     bool futexSignalled = false;
     uint32_t uniqueId = getpid();
 
-    auto futexWait = [uniqueId, &futexSignalled]() {
+    auto futexWait = [uniqueId, &futexSignalled]()
+    {
         std::unique_ptr<Futex> pFutex;
-        ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId));
+        ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::CLIENT));
 
         EXPECT_EQ(futexSignalled, false);
-        pFutex->wait();
+        pFutex->Wait();
         EXPECT_EQ(futexSignalled, true);
     };
 
-    auto futexWake = [uniqueId, &futexSignalled]() {
+    auto futexWake = [uniqueId, &futexSignalled]()
+    {
         std::unique_ptr<Futex> pFutex;
-        ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId));
+        ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::SERVER));
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         futexSignalled = true;
-        pFutex->wake();
+        pFutex->Wake();
     };
 
     std::thread tWait(futexWait);
@@ -85,7 +87,7 @@ TEST(FutexTestSuite, TwoProcesses)
     uint32_t uniqueId;
     bool *pFutexSignalledFlag = nullptr;
 
-    uniqueId = getpid(); // PID of the parent process
+    uniqueId = getpid(); // PID of the parent process (waits for signal from child)
 
     pFutexSignalledFlag = static_cast<bool*>(mmap(NULL, sizeof(bool), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0));
     ASSERT_NE(pFutexSignalledFlag, MAP_FAILED) << "Failed to mmap shared memory for futex signalled flag";
@@ -96,21 +98,23 @@ TEST(FutexTestSuite, TwoProcesses)
     // Fork to create child and parent processes
     pid_t pid = fork();
 
+    ASSERT_GE(pid, 0) << "Failed to fork process";
+
     if (pid == 0) {
         // Child process - Signaler
         std::unique_ptr<Futex> pFutex;
-        pFutex = std::make_unique<Futex>(uniqueId);
+        pFutex = std::make_unique<Futex>(uniqueId, Endpoint::SERVER);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         *pFutexSignalledFlag = true;
-        pFutex->wake();
+        pFutex->Wake();
     } else {
         // Parent process - Waiter
         std::unique_ptr<Futex> pFutex;
-        ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId));
+        ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::CLIENT));
 
         EXPECT_EQ((*pFutexSignalledFlag), false);
-        pFutex->wait();
+        pFutex->Wait();
         EXPECT_EQ((*pFutexSignalledFlag), true);
     }
 }
