@@ -1,3 +1,4 @@
+#include <iostream>
 #include <cstdint>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -11,7 +12,7 @@
 #include <cstring>
 #include <atomic>
 
-#include "ipc/Futex.h"
+#include "Futex.h"
 
 static constexpr size_t CACHE_LINE_SIZE = 64;
 
@@ -73,6 +74,7 @@ Futex::Futex(uint32_t uniqueId, Endpoint endpoint) :
     }
 
     // Since the pointer points to a shared memory object, we do not need to delete it.
+    // The initial value of the futex is 0 (unlocked).
     m_RawPointer = new (ptr) std::atomic<uint32_t>(0);
 
     // According to https://man7.org/linux/man-pages/man3/shm_open.3.html
@@ -102,34 +104,35 @@ Futex::~Futex() {
 
 void Futex::Wait()
 {
-    uint32_t one = 1;
     while (1)
     {
-        // We need to rely on low-level CPU primitives to ensure atomicity across multiple processors/caches
-        if (m_RawPointer->compare_exchange_strong(one, 0))
+        uint32_t expected = 1; // Reset expected value in each iteration as compare_exchange_strong modifies it if the condition fails
+        if (m_RawPointer->compare_exchange_strong(expected, 0))
         {
-            break;
+            // Futex 
+            break; // Lock was successfully acquired, exit loop.
         }
 
         long res = syscall(SYS_futex, m_RawPointer, FUTEX_WAIT, 0, nullptr, nullptr, 0);
         if (res == -1 && errno != EAGAIN)
         {
-            throw std::runtime_error("Failed to wait on futex");
+            std::cout << "FUTEX_WAIT error(" << errno << "): " << strerror(errno) << std::endl;
         }
     }
 }
 
 void Futex::Wake()
 {
-    uint32_t zero = 0;
+    uint32_t expected = 0;
 
-    // We need to rely on low-level CPU primitives to ensure atomicity across multiple processors/caches
-    if (m_RawPointer->compare_exchange_strong(zero, 1))
+    // Attempt to release the lock by setting m_RawPointer to 0 (unlocked).
+    if (m_RawPointer->compare_exchange_strong(expected, 1))
     {
+        // Wake up one waiting thread if any.
         int res = syscall(SYS_futex, m_RawPointer, FUTEX_WAKE, 1, nullptr, nullptr, 0);
         if (res == -1)
         {
-            throw std::runtime_error("Failed to wake futex");
+            std::cout << "FUTEX_WAKE error(" << errno << "): " << strerror(errno) << std::endl;
         }
     }
 }

@@ -70,12 +70,12 @@ TEST(FutexTestSuite, TwoThreads)
         std::unique_ptr<Futex> pFutex;
         ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::SERVER));
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
         futexSignalled = true;
         pFutex->Wake();
     };
 
     std::thread tWait(futexWait);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Wait for the wait thread to start
     std::thread tWake(futexWake);
 
     tWait.join();

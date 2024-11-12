@@ -8,8 +8,6 @@
 #include <cstdint>
 #include <string>
 
-#include "utilities/Endpoint.h"
-
 /**
  * @class Futex
  * @brief A class that provides basic futex-based synchronization using shared memory.
@@ -19,6 +17,12 @@
  */
 class Futex {
 public:
+    enum class Endpoint
+    {
+        SERVER,
+        CLIENT
+    };
+
     /**
      * @brief Constructs a Futex object with a unique identifier. The server uses this identifier to access the same shared memory futex integer.
      * 

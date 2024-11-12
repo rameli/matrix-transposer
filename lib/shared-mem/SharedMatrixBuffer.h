@@ -8,8 +8,6 @@
 #include <string>
 #include <sstream>
 
-#include "utilities/Endpoint.h"
-
 /**
  * @class SharedMatrixBuffer
  * @brief A class that manages a shared memory buffer for a 2^m by 2^n matrix of uint64_t elements.
@@ -21,6 +19,12 @@
 class SharedMatrixBuffer
 {
 public:
+    enum class Endpoint
+    {
+        SERVER,
+        CLIENT
+    };
+
     /**
      * @brief Constructs a SharedMatrixBuffer instance.
      * 
@@ -29,13 +33,14 @@ public:
      * @param n The exponent for the number of columns, resulting in 2^n columns.
      * @param k An arbitrary index used in the shared memory object filename in /dev/shm/.
      * @param endpoint The role of the endpoint in the network connection.
+     * @param transposed Whether the buffer belongs to a transposed matrix.
      * 
      * This constructor creates a shared memory segment with the name formatted as
      * "transpose_client_shm_uid_k", where PID is the process ID and k is the provided index.
      * 
      * @throw std::runtime_error If shared memory creation or mapping fails.
      */
-    SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k, Endpoint endpoint);
+    SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k, Endpoint endpoint, bool transposed);
     
     /**
      * @brief Destroys the SharedMatrixBuffer instance and releases resources.
@@ -93,7 +98,7 @@ public:
      * @param k An arbitrary index used in the shared memory object filename.
      * @return A string containing the formatted name of the shared memory object.
      */
-    static std::string CreateShmObjectName(uint32_t uniqueId, uint32_t k);
+    static std::string CreateShmObjectName(uint32_t uniqueId, uint32_t k, bool transposed);
 
 private:
     uint32_t m_UniqueId;         ///< Unique identifier for the shared memory object.
@@ -105,4 +110,5 @@ private:
     uint32_t m_NumColumns;       ///< Number of columns in the matrix.
     uint32_t m_BufferIndex;      ///< Index used in the shared memory object filename.
     Endpoint m_Endpoint;         ///< The role of the endpoint in the network connection.
+    bool m_Transposed;           ///< Whether the buffer belongs to a transposed matrix.
 };
