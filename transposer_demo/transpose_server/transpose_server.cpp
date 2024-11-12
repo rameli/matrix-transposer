@@ -41,6 +41,12 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
 {
     {
         unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+
+        if (gWorkspace.clientBank.size() >= MAX_CLIENTS)
+        {
+            return false;
+        }
+
         gWorkspace.clientBank[clientId] = ClientContext();
     }
     ClientContext& newClientContext = gWorkspace.clientBank[clientId];
@@ -144,17 +150,19 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
 
 void DisplayServerStats()
 {
-    std::ostringstream tableHeader;
-    std::ostringstream tableFooter;
-
-    tableHeader << "****************************************************" << std::endl;
-    tableHeader << "Server running with PID: " << gWorkspace.serverPid << std::endl;
-    tableFooter << "Press ENTER to stop the server...";
-
-    Table table(tableHeader.str(), {"Client PID", "M", "N", "K", "Req. Count"}, MAX_CLIENTS, tableFooter.str());
-
     while (gWorkspace.running)
     {
+        std::ostringstream tableHeader;
+        std::ostringstream tableFooter;
+
+        tableHeader << "****************************************************" << std::endl;
+        tableHeader << "Server running with PID: " << gWorkspace.serverPid << std::endl;
+        tableHeader << "Clients: " << gWorkspace.clientBank.size() << "/" << MAX_CLIENTS << std::endl;
+
+        tableFooter << "Press ENTER to stop the server...";
+
+        Table table(tableHeader.str(), {"Client PID", "M", "N", "K", "Req. Count"}, MAX_CLIENTS, tableFooter.str());
+
         system("clear");
         table.clear();
 
