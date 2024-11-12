@@ -46,7 +46,7 @@ bool ProcessArguments(int argc, char* argv[], uint32_t &m, uint32_t &n, uint32_t
 
 void MessageHandler(const ClientServerMessage& message)
 {
-    std::cout << ClientServerMessage::ToString(message) << std::endl;
+    // std::cout << ClientServerMessage::ToString(message) << std::endl;
     responseReceived = true;
 }
 

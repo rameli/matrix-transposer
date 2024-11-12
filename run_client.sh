@@ -1,5 +1,7 @@
 #!/bin/bash
 
+rm -rf /dev/shm/*
+
 # Configurable range for each random number argument
 MIN1=4
 MAX1=14
@@ -9,12 +11,12 @@ MIN3=1
 MAX3=20
 
 # Configurable range for the number of repetitions
-MIN_REPS=1
-MAX_REPS=5
+MIN_REPS=10
+MAX_REPS=32
 
 # Configurable range for the delay (in milliseconds)
 MIN_DELAY_MS=100  # Minimum delay in milliseconds
-MAX_DELAY_MS=1000 # Maximum delay in milliseconds
+MAX_DELAY_MS=3000 # Maximum delay in milliseconds
 
 # Function to check if MAX >= MIN
 validate_range() {
