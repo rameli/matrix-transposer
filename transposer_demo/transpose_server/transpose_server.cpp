@@ -6,10 +6,15 @@
 #include <unistd.h>
 #include <vector>
 #include <unordered_map>
+#include <sstream>
+#include <mutex>
+#include <cstdlib>
+
 
 #include "futex/Futex.h"
 #include "shared-mem/SharedMatrixBuffer.h"
 #include "unix-socks/UnixSockIpcServer.h"
+#include "presentation/Table.h"
 #include "ClientServerMessage.h"
 #include "Constants.h"
 #include "ClientContext.h"
@@ -18,19 +23,26 @@
 using std::vector;
 using std::unique_ptr;
 using std::unordered_map;
+using std::unique_lock;
+using std::mutex;
+
 using MatrixTransposer::Constants::SERVER_SOCKET_ADDRESS;
 using MatrixTransposer::Constants::MAX_CLIENTS;
 
 ServerWorkspace gWorkspace;
 
-static bool ClientExists(const ServerWorkspace& workspace, uint32_t clientId)
+static bool ClientExists(uint32_t clientId)
 {
-    return workspace.clientBank.contains(clientId);
+    unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+    return gWorkspace.clientBank.contains(clientId);
 }
 
 static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, const UnixSockIpcContext& context)
 {
-    gWorkspace.clientBank[clientId] = ClientContext();
+    {
+        unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+        gWorkspace.clientBank[clientId] = ClientContext();
+    }
     ClientContext& newClientContext = gWorkspace.clientBank[clientId];
 
     try
@@ -53,7 +65,10 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
     }
     catch(const std::exception& e)
     {
-        gWorkspace.clientBank.erase(clientId);
+        {
+            unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+            gWorkspace.clientBank.erase(clientId);
+        }
         std::cout << "Failed to set up client context for client PID: " << clientId << std::endl;
         std::cerr << e.what() << '\n';
         return false;
@@ -62,13 +77,13 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
     return true;
 }
 
-static bool RemoveClient(uint32_t clientId)
+static void RemoveClient(uint32_t clientId)
 {
+    unique_lock<mutex> lock(gWorkspace.clientBankMutex);
     gWorkspace.clientBank.erase(clientId);
-    return true;
 }
 
-void MessageHandler(const UnixSockIpcContext& context, const ClientServerMessage& message)
+static void MessageHandler(const UnixSockIpcContext& context, const ClientServerMessage& message)
 {
     uint32_t clientId;
 
@@ -83,7 +98,7 @@ void MessageHandler(const UnixSockIpcContext& context, const ClientServerMessage
             return;
         }
 
-        if (ClientExists(gWorkspace, clientId))
+        if (ClientExists(clientId))
         {
             std::cout << "Client PID: " << clientId << " already exists" << std::endl;
             return;
@@ -110,17 +125,13 @@ void MessageHandler(const UnixSockIpcContext& context, const ClientServerMessage
             return;
         }
 
-        if (!ClientExists(gWorkspace, clientId))
+        if (!ClientExists(clientId))
         {
             std::cout << "Cannot remove client PID: " << clientId << ". Does not exist" << std::endl;
             return;
         }
 
-        if (!RemoveClient(clientId))
-        {
-            std::cout << "Failed to remove client PID: " << clientId << std::endl;
-            return;
-        }
+        RemoveClient(clientId);
 
         std::cout << ClientServerMessage::ToString(message) << std::endl;
         break;
@@ -131,13 +142,39 @@ void MessageHandler(const UnixSockIpcContext& context, const ClientServerMessage
     }
 }
 
-void DisplayServerStats(ServerWorkspace& workspace)
+void DisplayServerStats()
 {
-    std::cout << "****************************************************" << std::endl;
-    std::cout << "Server running with PID: " << workspace.serverPid << std::endl;
-    std::cout << "Press ENTER to stop the server..." << std::endl;
+    std::ostringstream tableHeader;
+    std::ostringstream tableFooter;
 
-    std::cin.get();
+    tableHeader << "****************************************************" << std::endl;
+    tableHeader << "Server running with PID: " << gWorkspace.serverPid << std::endl;
+    tableFooter << "Press ENTER to stop the server...";
+
+    Table table(tableHeader.str(), {"Client PID", "M", "N", "K", "Req. Count"}, MAX_CLIENTS, tableFooter.str());
+
+    while (gWorkspace.running)
+    {
+        system("clear");
+        table.clear();
+
+        {
+            unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+            for (const auto& clientContext : gWorkspace.clientBank)
+            {
+                table.addRow({std::to_string(clientContext.first),
+                            std::to_string(clientContext.second.buffers.m),
+                            std::to_string(clientContext.second.buffers.n),
+                            std::to_string(clientContext.second.buffers.k),
+                            std::to_string(clientContext.second.stats.totalRequests)});
+            }
+        }
+
+        std::string tableOutput = table.render();
+        std::cout << tableOutput;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
     std::cout << "Server shutting down..." << std::endl;
     std::cout << "****************************************************" << std::endl;
 }
@@ -147,6 +184,7 @@ int main(int argc, char* argv[])
 {
     gWorkspace.serverPid = getpid();
     gWorkspace.clientBank.reserve(MAX_CLIENTS);
+    gWorkspace.running = true;
 
     try
     {
@@ -158,7 +196,10 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    DisplayServerStats(gWorkspace);
+    std::jthread serverStatsThread(DisplayServerStats);
+
+    std::cin.get();
+    gWorkspace.running = false;
 
     return 0;
 }

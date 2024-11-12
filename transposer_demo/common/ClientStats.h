@@ -4,5 +4,5 @@
 
 struct ClientStats
 {
-    uint32_t reqCount { 0 };
+    uint32_t totalRequests { 0 };
 };

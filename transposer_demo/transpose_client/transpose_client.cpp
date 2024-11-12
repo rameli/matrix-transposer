@@ -89,8 +89,8 @@ int main(int argc, char* argv[])
 
     ClientServerMessage unsubscribeMessage;
     ClientServerMessage::GenerateUnsubscribeMessage(unsubscribeMessage, gWorkspace.clientPid);
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     gWorkspace.pIpcClient->Send(unsubscribeMessage);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     return 0;
 }
