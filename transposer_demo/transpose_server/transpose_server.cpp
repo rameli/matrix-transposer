@@ -120,7 +120,7 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
         ClientServerMessage::GenerateSubscribeResponseMessage(responseMessage, gWorkspace.serverPid, clientId, MAX_CLIENTS, gWorkspace.clientBank.size());
         gWorkspace.pIpcServer->Send(context, responseMessage);
 
-        std::cout << ClientServerMessage::ToString(message) << std::endl;
+        // std::cout << ClientServerMessage::ToString(message) << std::endl;
         break;
     }
     case ClientServerMessage::MessageType::Unsubscribe:
@@ -139,7 +139,7 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
 
         RemoveClient(clientId);
 
-        std::cout << ClientServerMessage::ToString(message) << std::endl;
+        // std::cout << ClientServerMessage::ToString(message) << std::endl;
         break;
     }
     default:
