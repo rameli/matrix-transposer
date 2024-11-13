@@ -11,7 +11,7 @@
 #include <cstdlib>
 
 #include "futex/Futex.h"
-#include "shared-mem/SharedMatrixBuffer.h"
+#include "matrix-buf/SharedMatrixBuffer.h"
 #include "unix-socks/UnixSockIpcServer.h"
 #include "presentation/Table.h"
 #include "ClientServerMessage.h"
@@ -64,12 +64,12 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         newClientContext.matrixBuffersTr.reserve(k);
 
         newClientContext.pTransposeReadyFutex = std::make_unique<Futex>(clientId, Futex::Endpoint::SERVER);
-        newClientContext.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(clientId, m, n, 0, SharedMatrixBuffer::Endpoint::SERVER, SHM_NAME_REQ_BUF_SUFFIX);
+        newClientContext.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, 0, SHM_NAME_REQ_BUF_SUFFIX);
 
         for (uint32_t bufferIndex = 0; bufferIndex < k; bufferIndex++)
         {
-            newClientContext.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(clientId, m, n, bufferIndex, SharedMatrixBuffer::Endpoint::SERVER, SHM_NAME_MATRIX_SUFFIX));
-            newClientContext.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(clientId, m, n, bufferIndex, SharedMatrixBuffer::Endpoint::SERVER, SHM_NAME_TR_MATRIX_SUFFIX));
+            newClientContext.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SHM_NAME_MATRIX_SUFFIX));
+            newClientContext.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SHM_NAME_TR_MATRIX_SUFFIX));
         }
     }
     catch(const std::exception& e)

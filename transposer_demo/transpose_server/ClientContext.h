@@ -6,7 +6,7 @@
 #include <unordered_map>
 
 #include "futex/Futex.h"
-#include "shared-mem/SharedMatrixBuffer.h"
+#include "matrix-buf/SharedMatrixBuffer.h"
 #include "unix-socks/UnixSockIpcServer.h"
 #include "BufferDimensions.h"
 #include "ClientStats.h"

@@ -16,15 +16,17 @@ endif()
 # -------------------------------------------------------
 # Libraries
 # -------------------------------------------------------
-add_library(ipc_signal SHARED lib/futex/Futex.cpp)
-add_library(ipc_shared_mem SHARED lib/shared-mem/SharedMatrixBuffer.cpp)
-add_library(ipc_unix_sock INTERFACE)
+add_library(futex SHARED lib/futex/Futex.cpp)
+add_library(matrix-buf SHARED lib/matrix-buf/SharedMatrixBuffer.cpp)
 add_library(presentation INTERFACE)
+add_library(shared-mem SHARED lib/shared-mem/SharedMemory.cpp)
+add_library(unix-socks INTERFACE)
 
-target_include_directories(ipc_signal PUBLIC lib/futex)
-target_include_directories(ipc_shared_mem PUBLIC lib/shared-mem)
-target_include_directories(ipc_unix_sock INTERFACE lib/unix-socks)
+target_include_directories(futex PUBLIC lib/futex lib/shared-mem)
+target_include_directories(matrix-buf PUBLIC lib/shared-mem)
 target_include_directories(presentation INTERFACE lib/presentation)
+target_include_directories(shared-mem PUBLIC lib/shared-mem)
+target_include_directories(unix-socks INTERFACE lib/unix-socks)
 
 # -------------------------------------------------------
 # Executables
@@ -46,8 +48,8 @@ add_executable(transpose_client ${CLIENT_SOURCES})
 target_include_directories(transpose_server PUBLIC lib transposer_demo/common)
 target_include_directories(transpose_client PUBLIC lib transposer_demo/common)
 
-target_link_libraries(transpose_server PRIVATE ipc_signal ipc_shared_mem ipc_unix_sock presentation)
-target_link_libraries(transpose_client PRIVATE ipc_signal ipc_shared_mem ipc_unix_sock presentation)
+target_link_libraries(transpose_server PRIVATE futex matrix-buf shared-mem unix-socks presentation)
+target_link_libraries(transpose_client PRIVATE futex matrix-buf shared-mem unix-socks presentation)
 
 # Add debug information flags
 target_compile_options(transpose_server PRIVATE $<$<CONFIG:Debug>:-g>)

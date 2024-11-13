@@ -6,7 +6,7 @@
 
 #include "unix-socks/UnixSockIpcClient.h"
 #include "futex/Futex.h"
-#include "shared-mem/SharedMatrixBuffer.h"
+#include "matrix-buf/SharedMatrixBuffer.h"
 #include "ClientServerMessage.h"
 #include "BufferDimensions.h"
 #include "ClientStats.h"

@@ -9,7 +9,7 @@
 #include <random>
 
 #include "futex/Futex.h"
-#include "shared-mem/SharedMatrixBuffer.h"
+#include "matrix-buf/SharedMatrixBuffer.h"
 #include "unix-socks/UnixSockIpcClient.h"
 #include "ClientServerMessage.h"
 #include "Constants.h"
@@ -66,6 +66,13 @@ static void FillWithRandom(uint64_t* region, size_t numWords)
     }
 }
 
+static void FillWithZero(uint64_t* region, size_t numWords)
+{
+    for (size_t i = 0; i < numWords; ++i) {
+        region[i] = 0;
+    }
+}
+
 int main(int argc, char* argv[])
 {
 
@@ -81,11 +88,11 @@ int main(int argc, char* argv[])
     {
         gWorkspace.pIpcClient = std::make_unique<UnixSockIpcClient<ClientServerMessage>>(SERVER_SOCKET_ADDRESS, MessageHandler);
         gWorkspace.pTransposeReadyFutex = std::make_unique<Futex>(gWorkspace.clientPid, Futex::Endpoint::CLIENT);
-        gWorkspace.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, gWorkspace.buffers.m, gWorkspace.buffers.n, 0, SharedMatrixBuffer::Endpoint::CLIENT, SHM_NAME_REQ_BUF_SUFFIX);
+        gWorkspace.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, 0, SHM_NAME_REQ_BUF_SUFFIX);
         for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
         {
-            gWorkspace.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::Endpoint::CLIENT, SHM_NAME_MATRIX_SUFFIX));
-            gWorkspace.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::Endpoint::CLIENT, SHM_NAME_TR_MATRIX_SUFFIX));
+            gWorkspace.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SHM_NAME_MATRIX_SUFFIX));
+            gWorkspace.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SHM_NAME_TR_MATRIX_SUFFIX));
         }
     }
     catch(const std::exception& e)
