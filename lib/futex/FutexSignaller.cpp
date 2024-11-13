@@ -40,10 +40,10 @@ FutexSignaller::FutexSignaller(uint32_t ownerPid, Role role, const std::string& 
     m_RawPointer = new (ptr) std::atomic<uint32_t>(0);
 }
 
-std::string FutexSignaller::CreateShmObjectName(uint32_t uniqueId, const std::string& nameSuffix)
+std::string FutexSignaller::CreateShmObjectName(uint32_t ownerPid, const std::string& nameSuffix)
 {
     std::ostringstream oss;
-    oss << "futex_uid{" << uniqueId << "}" << nameSuffix;
+    oss << "futex_uid{" << ownerPid << "}" << nameSuffix;
     return oss.str();
 }
 

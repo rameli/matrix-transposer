@@ -20,14 +20,15 @@ add_library(futex SHARED lib/futex/FutexSignaller.cpp)
 add_library(matrix-buf SHARED lib/matrix-buf/SharedMatrixBuffer.cpp)
 add_library(presentation INTERFACE)
 add_library(shared-mem SHARED lib/shared-mem/SharedMemory.cpp)
-# add_library(spsc-queue SHARED lib/spsc-queue/SpscQueue.cpp)
+add_library(mem-utils INTERFACE)
+add_library(spsc-queue SHARED lib/spsc-queue/SpscQueue.cpp)
 add_library(unix-socks INTERFACE)
 
 target_include_directories(futex PUBLIC lib/futex lib/shared-mem)
 target_include_directories(matrix-buf PUBLIC lib/shared-mem)
 target_include_directories(presentation INTERFACE lib/presentation)
 target_include_directories(shared-mem PUBLIC lib/shared-mem)
-# target_include_directories(spsc-queue PUBLIC lib/shared-mem lib/futex)
+target_include_directories(spsc-queue PUBLIC lib/mem-utils lib/shared-mem lib/futex)
 target_include_directories(unix-socks INTERFACE lib/unix-socks)
 
 # -------------------------------------------------------
@@ -50,8 +51,8 @@ add_executable(transpose_client ${CLIENT_SOURCES})
 target_include_directories(transpose_server PUBLIC lib transposer_demo/common)
 target_include_directories(transpose_client PUBLIC lib transposer_demo/common)
 
-target_link_libraries(transpose_server PRIVATE futex matrix-buf presentation shared-mem unix-socks)
-target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation shared-mem unix-socks)
+target_link_libraries(transpose_server PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks)
+target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks)
 
 # Add debug information flags
 target_compile_options(transpose_server PRIVATE $<$<CONFIG:Debug>:-g>)

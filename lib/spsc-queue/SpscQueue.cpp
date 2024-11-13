@@ -1,110 +1,81 @@
-#include <iostream>
 #include <cstdint>
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
+#include <cstdlib>
+#include <cstring>
 #include <fcntl.h>
-#include <unistd.h>
+#include <fstream>
+#include <iostream>
 #include <linux/futex.h>
-#include <sys/syscall.h>
 #include <sstream>
 #include <string>
-#include <cstring>
-#include <atomic>
-#include <fstream>
-#include <cstdlib>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#include "FutexSignaller.h"
+#include "MemoryUtils.h"
+#include "SpscQueue.h"
 
 using std::string;
 
-static constexpr uint32_t DEFAULT_CACHE_LINE_SIZE = 64;
-
-FutexSignaller::FutexSignaller(uint32_t ownerPid, Role role, const std::string& nameSuffix) : 
+SpscQueue::SpscQueue(uint32_t ownerPid, Role role, size_t capacity, const std::string& nameSuffix) : 
     m_OwnerPid(ownerPid),
-    m_Role(role)
+    m_Role(role),
+    m_Capacity(capacity)
 {
-    SharedMemory::Ownership ownership = (role == Role::Waiter) ? SharedMemory::Ownership::Owner : SharedMemory::Ownership::Borrower;
-    SharedMemory::BufferInitMode bufferInitMode = role == Role::Waiter ? SharedMemory::BufferInitMode::Zero : SharedMemory::BufferInitMode::NoInit;
-    string shmObjectName = CreateShmObjectName(m_OwnerPid, nameSuffix);
-    size_t bufferSizeInBytes = GetCacheLineSize(DEFAULT_CACHE_LINE_SIZE);
+    if (m_Capacity < 2)
+    {
+        throw std::invalid_argument("Capacity must be at least 2");
+    }
 
-    mp_SharedMemory = std::make_unique<SharedMemory>(bufferSizeInBytes, shmObjectName, ownership, bufferInitMode);
-    void* ptr = mp_SharedMemory->GetRawPointer();
+    SharedMemory::Ownership bufferOwnership = (role == Role::Producer) ? SharedMemory::Ownership::Owner : SharedMemory::Ownership::Borrower;
+    SharedMemory::BufferInitMode bufferInitMode = (role == Role::Producer) ? SharedMemory::BufferInitMode::Zero : SharedMemory::BufferInitMode::NoInit;    
+    string bufferShmObjectName = CreateShmObjectName(m_OwnerPid, nameSuffix);
+    size_t bufferSizeInBytes = CalculateBufferSize();
+    mp_SharedMemory = std::make_unique<SharedMemory>(bufferSizeInBytes, bufferShmObjectName, bufferOwnership, bufferInitMode);
+    m_RawPointer = reinterpret_cast<uint32_t*>(mp_SharedMemory->GetRawPointer());
 
-    m_RawPointer = new (ptr) std::atomic<uint32_t>(0);
+    FutexSignaller::Role futexRole = (role == Role::Producer) ? FutexSignaller::Role::Waiter : FutexSignaller::Role::Waker;
+    string futexShmObjectName = CreateFutexObjectName(m_OwnerPid, nameSuffix);
+    mp_Futex = std::make_unique<FutexSignaller>(m_OwnerPid, futexRole, futexShmObjectName);
 }
 
-std::string FutexSignaller::CreateShmObjectName(uint32_t uniqueId, const std::string& nameSuffix)
+SpscQueue::~SpscQueue()
+{
+}
+
+uint32_t SpscQueue::GetCapacity() const
+{
+    return m_Capacity;
+}
+
+uint32_t* SpscQueue::GetRawPointer() const
+{
+    return mp_QueueData->buffer;
+}
+
+std::string SpscQueue::CreateShmObjectName(uint32_t ownerPid, const std::string& nameSuffix)
 {
     std::ostringstream oss;
-    oss << "futex_uid{" << uniqueId << "}" << nameSuffix;
+    oss << "spsc_queue_buffer_uid{" << ownerPid << "}" << nameSuffix;
     return oss.str();
 }
 
-FutexSignaller::~FutexSignaller()
+std::string SpscQueue::CreateFutexObjectName(uint32_t ownerPid, const std::string& nameSuffix)
 {
+    std::ostringstream oss;
+    oss << "spsc_queue_futex_uid{" << ownerPid << "}" << nameSuffix;
+    return oss.str();
 }
 
-void FutexSignaller::Wait()
+
+size_t SpscQueue::CalculateBufferSize()
 {
-    while (1)
+    size_t cacheLineSize = MemoryUtils::getCacheLineSize();
+    if (cacheLineSize == 0)
     {
-        uint32_t expected = 1; // Reset expected value in each iteration as compare_exchange_strong modifies it if the condition fails
-        if (m_RawPointer->compare_exchange_strong(expected, 0))
-        {
-            break;
-        }
+        cacheLineSize = 64;
+    }    
 
-        long res = syscall(SYS_futex, m_RawPointer, FUTEX_WAIT, 0, nullptr, nullptr, 0);
-        if (res == -1 && errno != EAGAIN)
-        {
-            std::cout << "FUTEX_WAIT error(" << errno << "): " << strerror(errno) << std::endl;
-        }
-    }
-}
-
-bool FutexSignaller::IsWaiting()
-{
-    return (m_RawPointer->load(std::memory_order_acquire) == 0);
-}
-
-void FutexSignaller::Wake()
-{
-    uint32_t expected = 0;
-
-    // Attempt to release the lock by setting m_RawPointer to 0 (unlocked).
-    if (m_RawPointer->compare_exchange_strong(expected, 1))
-    {
-        // Wake up one waiting thread if any.
-        int res = syscall(SYS_futex, m_RawPointer, FUTEX_WAKE, 1, nullptr, nullptr, 0);
-        if (res == -1)
-        {
-            std::cout << "FUTEX_WAKE error(" << errno << "): " << strerror(errno) << std::endl;
-        }
-    }
-}
-
-uint32_t FutexSignaller::GetCacheLineSize(uint32_t defaultSize)
-{
-    const std::string CACHE_LINE_SIZE_FILE_PATH = "/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size";
-    
-    // Attempt to open the file
-    std::ifstream file(CACHE_LINE_SIZE_FILE_PATH);
-    if (!file.is_open()) {
-        std::cerr << "Unable to open cache line size file: " << CACHE_LINE_SIZE_FILE_PATH << std::endl;
-        return defaultSize;
-    }
-    
-    // Read the cache line size from the file
-    uint32_t cacheLineSize;
-    file >> cacheLineSize;
-    file.close();
-
-    if (cacheLineSize <= 0) {
-        std::cerr << "Failed to retrieve a valid cache line size." << std::endl;
-        return defaultSize;
-    }
-
-    return cacheLineSize;
+    return (sizeof(QueueData) + m_Capacity * sizeof(uint32_t))/cacheLineSize * cacheLineSize;
 }

@@ -1,11 +1,12 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <string>
 #include <memory>
 
 #include "SharedMemory.h"
-#include "futex/FutexSignaller.h"
+#include "FutexSignaller.h"
 
 class SpscQueue {
 public:
@@ -15,19 +16,31 @@ public:
         Consumer
     };
 
-    SpscQueue(uint32_t ownerPid, Role endponit, uint32_t capacity, const std::string& nameSuffix);
+    SpscQueue(uint32_t ownerPid, Role role, size_t capacity, const std::string& nameSuffix);
     ~SpscQueue();
 
     const std::string& GetName() const;
+    uint32_t GetCapacity() const;
+    uint32_t* GetRawPointer() const;
     bool Enqueue(bool blocking);
     bool Deque(bool blocking);
 
 private:
+    struct QueueData {
+        alignas(64) std::atomic<size_t> head;
+        alignas(64) std::atomic<size_t> tail;
+        alignas(64) uint32_t buffer[];
+    };
+
+    size_t CalculateBufferSize();
     static std::string CreateShmObjectName(uint32_t ownerPid, const std::string& nameSuffix);
+    static std::string CreateFutexObjectName(uint32_t ownerPid, const std::string& nameSuffix);
 
     uint32_t m_OwnerPid;
-    uint32_t *m_RawPointer;
     Role m_Role;
+    size_t m_Capacity;
+
+    QueueData* mp_QueueData;
 
     std::unique_ptr<FutexSignaller> mp_Futex;
     std::unique_ptr<SharedMemory> mp_SharedMemory;
