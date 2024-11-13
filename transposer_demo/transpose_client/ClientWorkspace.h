@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+#include "shared-mem/SharedMemory.h"
 #include "unix-socks/UnixSockIpcClient.h"
 #include "futex/FutexSignaller.h"
 #include "matrix-buf/SharedMatrixBuffer.h"
@@ -19,6 +20,6 @@ struct ClientWorkspace
     std::unique_ptr<UnixSockIpcClient<ClientServerMessage>> pIpcClient;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffers;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffersTr;
-    std::unique_ptr<SharedMatrixBuffer> pRequestBuffer;
+    std::unique_ptr<SharedMemory> pRequestBuffer;
     std::unique_ptr<FutexSignaller> pTransposeReadyFutex;
 };

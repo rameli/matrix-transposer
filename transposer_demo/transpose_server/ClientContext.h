@@ -8,6 +8,7 @@
 #include "futex/FutexSignaller.h"
 #include "matrix-buf/SharedMatrixBuffer.h"
 #include "unix-socks/UnixSockIpcServer.h"
+#include "shared-mem/SharedMemory.h"
 #include "BufferDimensions.h"
 #include "ClientStats.h"
 
@@ -21,7 +22,7 @@ struct ClientContext
     UnixSockIpcContext ipcContext;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffers;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffersTr;
-    std::unique_ptr<SharedMatrixBuffer> pRequestBuffer;
+    std::unique_ptr<SharedMemory> pRequestBuffer;
     std::unique_ptr<FutexSignaller> pTransposeReadyFutex;
 };
 

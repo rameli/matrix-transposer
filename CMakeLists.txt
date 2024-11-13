@@ -20,12 +20,14 @@ add_library(futex SHARED lib/futex/FutexSignaller.cpp)
 add_library(matrix-buf SHARED lib/matrix-buf/SharedMatrixBuffer.cpp)
 add_library(presentation INTERFACE)
 add_library(shared-mem SHARED lib/shared-mem/SharedMemory.cpp)
+# add_library(spsc-queue SHARED lib/spsc-queue/SpscQueue.cpp)
 add_library(unix-socks INTERFACE)
 
 target_include_directories(futex PUBLIC lib/futex lib/shared-mem)
 target_include_directories(matrix-buf PUBLIC lib/shared-mem)
 target_include_directories(presentation INTERFACE lib/presentation)
 target_include_directories(shared-mem PUBLIC lib/shared-mem)
+# target_include_directories(spsc-queue PUBLIC lib/shared-mem lib/futex)
 target_include_directories(unix-socks INTERFACE lib/unix-socks)
 
 # -------------------------------------------------------
@@ -48,8 +50,8 @@ add_executable(transpose_client ${CLIENT_SOURCES})
 target_include_directories(transpose_server PUBLIC lib transposer_demo/common)
 target_include_directories(transpose_client PUBLIC lib transposer_demo/common)
 
-target_link_libraries(transpose_server PRIVATE futex matrix-buf shared-mem unix-socks presentation)
-target_link_libraries(transpose_client PRIVATE futex matrix-buf shared-mem unix-socks presentation)
+target_link_libraries(transpose_server PRIVATE futex matrix-buf presentation shared-mem unix-socks)
+target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation shared-mem unix-socks)
 
 # Add debug information flags
 target_compile_options(transpose_server PRIVATE $<$<CONFIG:Debug>:-g>)
@@ -59,20 +61,20 @@ target_compile_options(transpose_client PRIVATE $<$<CONFIG:Debug>:-g>)
 # Add GoogleTest for testing
 # -------------------------------------------------------
 
-# enable_testing()
+enable_testing()
 
-# # Add test source files
-# set(TEST_SOURCES
-#     tests/test_Futex.cpp
-#     # tests/test_SharedMatrixBuffer.cpp
-#     # tests/test_UnixSockets.cpp
-# )
+# Add test source files
+set(TEST_SOURCES
+    tests/test_FutexSignaller.cpp
+    # tests/test_SharedMatrixBuffer.cpp
+    # tests/test_UnixSockets.cpp
+)
 
-# add_executable(run_tests ${TEST_SOURCES})
+add_executable(run_tests ${TEST_SOURCES})
 
-# target_include_directories(run_tests PRIVATE include)
-# target_link_libraries(run_tests PRIVATE gtest gtest_main ipc_signal ipc_shared_mem)
+target_include_directories(run_tests PUBLIC lib)
+target_link_libraries(run_tests PRIVATE gtest gtest_main futex matrix-buf shared-mem unix-socks)
 
-# # Automatically discover tests
-# include(GoogleTest)
-# gtest_discover_tests(run_tests)
+# Automatically discover tests
+include(GoogleTest)
+gtest_discover_tests(run_tests)

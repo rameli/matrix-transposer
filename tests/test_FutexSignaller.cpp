@@ -8,18 +8,18 @@
 #include <thread>
 #include <vector>
 
-#include "ipc/Futex.h"
+#include "futex/FutexSignaller.h"
 
-static std::string CreateFutexShmFilename(uint32_t uniqueId)
+static std::string CreateFutexShmFilename(uint32_t uniqueId, const std::string& nameSuffix)
 {
     std::ostringstream oss;
-    oss << "transpose_client_uid{" << uniqueId << "}_futex";
+    oss << "futex_uid{" << uniqueId << "}" << nameSuffix;
     return oss.str();
 }
 
 static bool ShmObjectExists(uint32_t uniqueId)
 {
-    std::string expectedName = CreateFutexShmFilename(uniqueId);
+    std::string expectedName = CreateFutexShmFilename(uniqueId, "");
 
     std::filesystem::path SHM_DIR = "/dev/shm/";
     std::filesystem::path filePath = SHM_DIR / expectedName;
@@ -29,20 +29,19 @@ static bool ShmObjectExists(uint32_t uniqueId)
 
 TEST(FutexTestSuite, CorrectInit)
 {
-    std::unique_ptr<Futex> pFutex;
+    std::unique_ptr<FutexSignaller> pFutex;
     uint32_t uniqueId = getpid();
-    ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::CLIENT));
+    ASSERT_NO_THROW(pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waiter, ""));
     EXPECT_EQ(ShmObjectExists(uniqueId), true);
-
 }
 
 TEST(FutexTestSuite, CorrectInitAndDestroy)
 {
-    std::unique_ptr<Futex> pFutex;
+    std::unique_ptr<FutexSignaller> pFutex;
     uint32_t uniqueId = getpid();
     
     // Create the futex
-    ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::CLIENT));
+    ASSERT_NO_THROW(pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waiter, ""));
     EXPECT_EQ(ShmObjectExists(uniqueId), true);
 
     // Destroy the futex
@@ -57,8 +56,8 @@ TEST(FutexTestSuite, TwoThreads)
 
     auto futexWait = [uniqueId, &futexSignalled]()
     {
-        std::unique_ptr<Futex> pFutex;
-        ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::CLIENT));
+        std::unique_ptr<FutexSignaller> pFutex;
+        ASSERT_NO_THROW(pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waiter, ""));
 
         EXPECT_EQ(futexSignalled, false);
         pFutex->Wait();
@@ -67,8 +66,8 @@ TEST(FutexTestSuite, TwoThreads)
 
     auto futexWake = [uniqueId, &futexSignalled]()
     {
-        std::unique_ptr<Futex> pFutex;
-        ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::SERVER));
+        std::unique_ptr<FutexSignaller> pFutex;
+        ASSERT_NO_THROW(pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waker, ""));
 
         futexSignalled = true;
         pFutex->Wake();
@@ -102,16 +101,16 @@ TEST(FutexTestSuite, TwoProcesses)
 
     if (pid == 0) {
         // Child process - Signaler
-        std::unique_ptr<Futex> pFutex;
-        pFutex = std::make_unique<Futex>(uniqueId, Endpoint::SERVER);
+        std::unique_ptr<FutexSignaller> pFutex;
+        pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waker, "");
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         *pFutexSignalledFlag = true;
         pFutex->Wake();
     } else {
         // Parent process - Waiter
-        std::unique_ptr<Futex> pFutex;
-        ASSERT_NO_THROW(pFutex = std::make_unique<Futex>(uniqueId, Endpoint::CLIENT));
+        std::unique_ptr<FutexSignaller> pFutex;
+        ASSERT_NO_THROW(pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waiter, ""));
 
         EXPECT_EQ((*pFutexSignalledFlag), false);
         pFutex->Wait();

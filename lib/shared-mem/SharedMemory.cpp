@@ -8,7 +8,7 @@
 
 using std::ostringstream;
 
-SharedMemory::SharedMemory(size_t sizeInBytes, const std::string name, Ownership ownership) :
+SharedMemory::SharedMemory(size_t sizeInBytes, const std::string name, Ownership ownership, BufferInitMode initMode) :
     m_FileDescriptor(-1),
     m_RawPointer(nullptr),
     m_SizeInBytes(sizeInBytes),
@@ -70,6 +70,11 @@ SharedMemory::SharedMemory(size_t sizeInBytes, const std::string name, Ownership
     // According to https://man7.org/linux/man-pages/man3/shm_open.3.html
     // "After a call to mmap(2) the file descriptor may be closed without affecting the memory mapping."
     close(m_FileDescriptor);
+
+    if (initMode == BufferInitMode::Zero && m_Ownership == Ownership::Owner)
+    {
+        FillWithZero();
+    }
 }
 
 SharedMemory::~SharedMemory()
@@ -103,4 +108,10 @@ const std::string& SharedMemory::GetName() const
 size_t SharedMemory::GetBufferSizeInBytes() const
 {
     return m_SizeInBytes;
+}
+
+void SharedMemory::FillWithZero()
+{
+    
+    memset(m_RawPointer, 0, GetBufferSizeInBytes());
 }

@@ -17,7 +17,13 @@ public:
         Borrower
     };
 
-    SharedMemory(size_t sizeInBytes, const std::string name, Ownership ownership);
+    enum class BufferInitMode
+    {
+        Zero,
+        NoInit
+    };
+
+    SharedMemory(size_t sizeInBytes, const std::string name, Ownership ownership, BufferInitMode initMode);
     ~SharedMemory();
 
     void* GetRawPointer() const;
@@ -25,6 +31,8 @@ public:
     size_t GetBufferSizeInBytes() const;
 
 private:
+    void FillWithZero();
+
     std::string m_ShmObjectName;
     size_t m_SizeInBytes;
     int m_FileDescriptor;

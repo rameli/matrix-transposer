@@ -8,6 +8,7 @@
 #include <string>
 #include <memory>
 #include <sstream>
+#include <random>
 
 #include "SharedMemory.h"
 
@@ -20,12 +21,18 @@ public:
         Client
     };
 
-    SharedMatrixBuffer(uint32_t ownerPid, Endpoint endpoint, uint32_t m, uint32_t n, uint32_t k, std::string suffix);
-    
+    enum class BufferInitMode
+    {
+        Random,
+        Zero,
+        NoInit
+    };
+
+    SharedMatrixBuffer(uint32_t ownerPid, Endpoint endpoint, uint32_t m, uint32_t n, uint32_t k, BufferInitMode initMode, const std::string& nameSuffix);
     ~SharedMatrixBuffer();
 
     uint64_t* GetRawPointer() const;
-    std::string GetName() const;
+    const std::string& GetName() const;
 
     uint32_t RowCount() const;
     uint32_t ColumnCount() const;
@@ -33,8 +40,10 @@ public:
     size_t GetBufferSizeInBytes() const;
 
 private:
-    static std::string CreateShmObjectName(uint32_t ownerPid, uint32_t k, std::string suffix);
-
+    static std::string CreateShmObjectName(uint32_t ownerPid, uint32_t k, const std::string& nameSuffix);
+    void FillWithRandom();
+    void FillWithZero();
+    
     uint32_t m_OwnerPid;
     Endpoint m_Endpoint;
     uint32_t m_NumRows;

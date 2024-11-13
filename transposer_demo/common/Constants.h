@@ -9,5 +9,5 @@ namespace MatrixTransposer::Constants
     const std::string SHM_NAME_TR_MATRIX_SUFFIX = "_tr";
     const std::string SHM_NAME_REQ_BUF_SUFFIX = "_reqBuf";
 
-    constexpr uint32_t MAX_CLIENTS = 32;
+    constexpr uint32_t MAX_CLIENTS = 128;
 }

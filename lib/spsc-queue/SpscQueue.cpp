@@ -29,11 +29,6 @@ FutexSignaller::FutexSignaller(uint32_t ownerPid, Role role, const std::string& 
     string shmObjectName = CreateShmObjectName(m_OwnerPid, nameSuffix);
     size_t bufferSizeInBytes = GetCacheLineSize(DEFAULT_CACHE_LINE_SIZE);
 
-    if (bufferSizeInBytes < sizeof(uint32_t))
-    {
-        bufferSizeInBytes = sizeof(uint32_t);
-    }
-
     mp_SharedMemory = std::make_unique<SharedMemory>(bufferSizeInBytes, shmObjectName, ownership, bufferInitMode);
     void* ptr = mp_SharedMemory->GetRawPointer();
 

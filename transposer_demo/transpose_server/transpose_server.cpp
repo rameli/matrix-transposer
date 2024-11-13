@@ -63,13 +63,13 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         newClientContext.matrixBuffers.reserve(k);
         newClientContext.matrixBuffersTr.reserve(k);
 
-        newClientContext.pTransposeReadyFutex = std::make_unique<FutexSignaller>(clientId, FutexSignaller::Endpoint::SERVER);
-        // newClientContext.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, 0, SHM_NAME_REQ_BUF_SUFFIX);
+        newClientContext.pTransposeReadyFutex = std::make_unique<FutexSignaller>(clientId, FutexSignaller::Role::Waker, "");
+        // newClientContext.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Role::Server, m, n, 0, SHM_NAME_REQ_BUF_SUFFIX);
 
         for (uint32_t bufferIndex = 0; bufferIndex < k; bufferIndex++)
         {
-            newClientContext.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SHM_NAME_MATRIX_SUFFIX));
-            newClientContext.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SHM_NAME_TR_MATRIX_SUFFIX));
+            newClientContext.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SharedMatrixBuffer::BufferInitMode::NoInit, SHM_NAME_MATRIX_SUFFIX));
+            newClientContext.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SharedMatrixBuffer::BufferInitMode::NoInit, SHM_NAME_TR_MATRIX_SUFFIX));
         }
     }
     catch(const std::exception& e)

@@ -51,32 +51,12 @@ static bool ProcessArguments(int argc, char* argv[], uint32_t &m, uint32_t &n, u
 
 static void MessageHandler(const ClientServerMessage& message)
 {
-    // std::cout << ClientServerMessage::ToString(message) << std::endl;
+    std::cout << ClientServerMessage::ToString(message) << std::endl;
     responseReceived = true;
-}
-
-static void FillWithRandom(uint64_t* region, size_t numWords)
-{
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dist;
-
-    for (size_t i = 0; i < numWords; ++i) {
-        region[i] = dist(gen);
-    }
-}
-
-static void FillWithZero(uint64_t* region, size_t numWords)
-{
-    for (size_t i = 0; i < numWords; ++i) {
-        region[i] = 0;
-    }
 }
 
 int main(int argc, char* argv[])
 {
-
-    
     if (!ProcessArguments(argc, argv, gWorkspace.buffers.m, gWorkspace.buffers.n, gWorkspace.buffers.k))
     {
         return 1;
@@ -87,12 +67,15 @@ int main(int argc, char* argv[])
     try
     {
         gWorkspace.pIpcClient = std::make_unique<UnixSockIpcClient<ClientServerMessage>>(SERVER_SOCKET_ADDRESS, MessageHandler);
-        gWorkspace.pTransposeReadyFutex = std::make_unique<FutexSignaller>(gWorkspace.clientPid, FutexSignaller::Endpoint::CLIENT);
-        // gWorkspace.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, 0, SHM_NAME_REQ_BUF_SUFFIX);
+        gWorkspace.pTransposeReadyFutex = std::make_unique<FutexSignaller>(gWorkspace.clientPid, FutexSignaller::Role::Waiter, "");
+        // gWorkspace.pRequestBuffer = std::make_unique<SharedMemory> 
+
+        gWorkspace.matrixBuffers.reserve(gWorkspace.buffers.k);
+        gWorkspace.matrixBuffersTr.reserve(gWorkspace.buffers.k);
         for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
         {
-            gWorkspace.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SHM_NAME_MATRIX_SUFFIX));
-            gWorkspace.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SHM_NAME_TR_MATRIX_SUFFIX));
+            gWorkspace.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Random, SHM_NAME_MATRIX_SUFFIX));
+            gWorkspace.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Zero, SHM_NAME_TR_MATRIX_SUFFIX));
         }
     }
     catch(const std::exception& e)
@@ -110,12 +93,7 @@ int main(int argc, char* argv[])
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    // std::cin.get();
-    //     for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
-    //     {
-    //         FillWithRandom(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffers[bufferIndex]->GetElementCount());
-    //     }
-    // std::cin.get();
+    std::cin.get();
 
     ClientServerMessage unsubscribeMessage;
     ClientServerMessage::GenerateUnsubscribeMessage(unsubscribeMessage, gWorkspace.clientPid);
