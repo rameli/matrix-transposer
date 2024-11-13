@@ -22,14 +22,7 @@ SharedMatrixBuffer::SharedMatrixBuffer(uint32_t ownerPid, Endpoint endpoint, uin
 
     // Calculate size: 2^m * 2^n * sizeof(uint64_t)
     size_t bufferSizeInBytes = m_NumRows * m_NumColumns * sizeof(uint64_t);
-    try
-    {
-        mp_SharedMemory = std::make_unique<SharedMemory>(bufferSizeInBytes, shmObjectName, ownership);
-    }
-    catch(const std::exception& e)
-    {
-        throw;
-    }
+    mp_SharedMemory = std::make_unique<SharedMemory>(bufferSizeInBytes, shmObjectName, ownership);
 }
 
 SharedMatrixBuffer::~SharedMatrixBuffer()

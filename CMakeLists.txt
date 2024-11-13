@@ -16,7 +16,7 @@ endif()
 # -------------------------------------------------------
 # Libraries
 # -------------------------------------------------------
-add_library(futex SHARED lib/futex/Futex.cpp)
+add_library(futex SHARED lib/futex/FutexSignaller.cpp)
 add_library(matrix-buf SHARED lib/matrix-buf/SharedMatrixBuffer.cpp)
 add_library(presentation INTERFACE)
 add_library(shared-mem SHARED lib/shared-mem/SharedMemory.cpp)

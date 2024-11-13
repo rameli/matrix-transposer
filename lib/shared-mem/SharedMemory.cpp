@@ -12,6 +12,7 @@ SharedMemory::SharedMemory(size_t sizeInBytes, const std::string name, Ownership
     m_FileDescriptor(-1),
     m_RawPointer(nullptr),
     m_SizeInBytes(sizeInBytes),
+    m_ShmObjectName(name),
     m_Ownership(ownership)
 {
     if (m_Ownership == Ownership::Owner)

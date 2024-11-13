@@ -10,7 +10,7 @@
 #include <mutex>
 #include <cstdlib>
 
-#include "futex/Futex.h"
+#include "futex/FutexSignaller.h"
 #include "matrix-buf/SharedMatrixBuffer.h"
 #include "unix-socks/UnixSockIpcServer.h"
 #include "presentation/Table.h"
@@ -63,8 +63,8 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         newClientContext.matrixBuffers.reserve(k);
         newClientContext.matrixBuffersTr.reserve(k);
 
-        newClientContext.pTransposeReadyFutex = std::make_unique<Futex>(clientId, Futex::Endpoint::SERVER);
-        newClientContext.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, 0, SHM_NAME_REQ_BUF_SUFFIX);
+        newClientContext.pTransposeReadyFutex = std::make_unique<FutexSignaller>(clientId, FutexSignaller::Endpoint::SERVER);
+        // newClientContext.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, 0, SHM_NAME_REQ_BUF_SUFFIX);
 
         for (uint32_t bufferIndex = 0; bufferIndex < k; bufferIndex++)
         {

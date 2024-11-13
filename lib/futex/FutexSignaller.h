@@ -1,6 +1,6 @@
 /**
- * @file Futex.h
- * @brief Definition of the Futex class for managing futex-based synchronization using shared memory among multiple processes.
+ * @file FutexSignaller.h
+ * @brief Definition of the FutexSignaller class for managing futex-based synchronization using shared memory among multiple processes.
  */
 
 #pragma once
@@ -9,13 +9,13 @@
 #include <string>
 
 /**
- * @class Futex
+ * @class FutexSignaller
  * @brief A class that provides basic futex-based synchronization using shared memory.
  * 
  * This class enables inter-process synchronization by using shared memory objects
  * and futex (fast user-space mutex) mechanisms.
  */
-class Futex {
+class FutexSignaller {
 public:
     enum class Endpoint
     {
@@ -24,19 +24,19 @@ public:
     };
 
     /**
-     * @brief Constructs a Futex object with a unique identifier. The server uses this identifier to access the same shared memory futex integer.
+     * @brief Constructs a FutexSignaller object with a unique identifier. The server uses this identifier to access the same shared memory futex integer.
      * 
      * @param uniqueId A unique identifier used to create the shared memory object.
      * @param endpoint The role of the endpoint in the network connection.
      */
-    Futex(uint32_t uniqueId, Endpoint endpoint);
+    FutexSignaller(uint32_t uniqueId, Endpoint endpoint);
 
     /**
-     * @brief Destructor for the Futex class.
+     * @brief Destructor for the FutexSignaller class.
      * 
      * Cleans up resources associated with the shared memory and futex operations.
      */
-    ~Futex();
+    ~FutexSignaller();
 
     /**
      * @brief Blocks the calling thread until the futex is woken.

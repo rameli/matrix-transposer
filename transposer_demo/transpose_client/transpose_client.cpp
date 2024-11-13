@@ -8,7 +8,7 @@
 #include <thread>
 #include <random>
 
-#include "futex/Futex.h"
+#include "futex/FutexSignaller.h"
 #include "matrix-buf/SharedMatrixBuffer.h"
 #include "unix-socks/UnixSockIpcClient.h"
 #include "ClientServerMessage.h"
@@ -87,8 +87,8 @@ int main(int argc, char* argv[])
     try
     {
         gWorkspace.pIpcClient = std::make_unique<UnixSockIpcClient<ClientServerMessage>>(SERVER_SOCKET_ADDRESS, MessageHandler);
-        gWorkspace.pTransposeReadyFutex = std::make_unique<Futex>(gWorkspace.clientPid, Futex::Endpoint::CLIENT);
-        gWorkspace.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, 0, SHM_NAME_REQ_BUF_SUFFIX);
+        gWorkspace.pTransposeReadyFutex = std::make_unique<FutexSignaller>(gWorkspace.clientPid, FutexSignaller::Endpoint::CLIENT);
+        // gWorkspace.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, 0, SHM_NAME_REQ_BUF_SUFFIX);
         for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
         {
             gWorkspace.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SHM_NAME_MATRIX_SUFFIX));

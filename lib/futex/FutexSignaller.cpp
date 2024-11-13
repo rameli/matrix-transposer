@@ -12,11 +12,11 @@
 #include <cstring>
 #include <atomic>
 
-#include "Futex.h"
+#include "FutexSignaller.h"
 
 static constexpr size_t CACHE_LINE_SIZE = 64;
 
-Futex::Futex(uint32_t uniqueId, Endpoint endpoint) : 
+FutexSignaller::FutexSignaller(uint32_t uniqueId, Endpoint endpoint) : 
     m_UniqueId(uniqueId),
     m_Endpoint(endpoint)
 {
@@ -82,14 +82,14 @@ Futex::Futex(uint32_t uniqueId, Endpoint endpoint) :
     close(m_FileDescriptor);
 }
 
-std::string Futex::CreateShmObjectName(uint32_t uniqueId)
+std::string FutexSignaller::CreateShmObjectName(uint32_t uniqueId)
 {
     std::ostringstream oss;
     oss << "transpose_client_uid{" << uniqueId << "}_futex";
     return oss.str();
 }
 
-Futex::~Futex() {
+FutexSignaller::~FutexSignaller() {
     if (m_RawPointer != MAP_FAILED && m_RawPointer != nullptr)
     {
         munmap((void *)m_RawPointer, CACHE_LINE_SIZE);
@@ -102,7 +102,7 @@ Futex::~Futex() {
     }
 }
 
-void Futex::Wait()
+void FutexSignaller::Wait()
 {
     while (1)
     {
@@ -120,12 +120,12 @@ void Futex::Wait()
     }
 }
 
-bool Futex::IsWaiting()
+bool FutexSignaller::IsWaiting()
 {
     return (m_RawPointer->load(std::memory_order_acquire) == 0);
 }
 
-void Futex::Wake()
+void FutexSignaller::Wake()
 {
     uint32_t expected = 0;
 
