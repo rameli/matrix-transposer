@@ -109,8 +109,7 @@ void Futex::Wait()
         uint32_t expected = 1; // Reset expected value in each iteration as compare_exchange_strong modifies it if the condition fails
         if (m_RawPointer->compare_exchange_strong(expected, 0))
         {
-            // Futex 
-            break; // Lock was successfully acquired, exit loop.
+            break;
         }
 
         long res = syscall(SYS_futex, m_RawPointer, FUTEX_WAIT, 0, nullptr, nullptr, 0);
@@ -119,6 +118,11 @@ void Futex::Wait()
             std::cout << "FUTEX_WAIT error(" << errno << "): " << strerror(errno) << std::endl;
         }
     }
+}
+
+bool Futex::IsWaiting()
+{
+    return (m_RawPointer->load(std::memory_order_acquire) == 0);
 }
 
 void Futex::Wake()

@@ -10,7 +10,6 @@
 #include <mutex>
 #include <cstdlib>
 
-
 #include "futex/Futex.h"
 #include "shared-mem/SharedMatrixBuffer.h"
 #include "unix-socks/UnixSockIpcServer.h"
@@ -27,6 +26,9 @@ using std::unique_lock;
 using std::mutex;
 
 using MatrixTransposer::Constants::SERVER_SOCKET_ADDRESS;
+using MatrixTransposer::Constants::SHM_NAME_MATRIX_SUFFIX;
+using MatrixTransposer::Constants::SHM_NAME_TR_MATRIX_SUFFIX;
+using MatrixTransposer::Constants::SHM_NAME_REQ_BUF_SUFFIX;
 using MatrixTransposer::Constants::MAX_CLIENTS;
 
 ServerWorkspace gWorkspace;
@@ -62,11 +64,12 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         newClientContext.matrixBuffersTr.reserve(k);
 
         newClientContext.pTransposeReadyFutex = std::make_unique<Futex>(clientId, Futex::Endpoint::SERVER);
+        newClientContext.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(clientId, m, n, 0, SharedMatrixBuffer::Endpoint::SERVER, SHM_NAME_REQ_BUF_SUFFIX);
 
         for (uint32_t bufferIndex = 0; bufferIndex < k; bufferIndex++)
         {
-            newClientContext.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(clientId, m, n, bufferIndex, SharedMatrixBuffer::Endpoint::SERVER, false));
-            newClientContext.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(clientId, m, n, bufferIndex, SharedMatrixBuffer::Endpoint::SERVER, true));
+            newClientContext.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(clientId, m, n, bufferIndex, SharedMatrixBuffer::Endpoint::SERVER, SHM_NAME_MATRIX_SUFFIX));
+            newClientContext.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(clientId, m, n, bufferIndex, SharedMatrixBuffer::Endpoint::SERVER, SHM_NAME_TR_MATRIX_SUFFIX));
         }
     }
     catch(const std::exception& e)
@@ -148,7 +151,7 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
     }
 }
 
-void DisplayServerStats()
+static void DisplayServerStats()
 {
     while (gWorkspace.running)
     {
@@ -187,6 +190,10 @@ void DisplayServerStats()
     std::cout << "****************************************************" << std::endl;
 }
 
+static void WorkloadDispatcher()
+{
+    
+}
 
 int main(int argc, char* argv[])
 {

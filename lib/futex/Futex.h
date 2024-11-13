@@ -45,6 +45,8 @@ public:
      */
     void Wait();
 
+    bool IsWaiting();
+
     /**
      * @brief Wakes a thread waiting on this futex.
      * 

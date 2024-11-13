@@ -6,7 +6,7 @@
 
 #include "SharedMatrixBuffer.h"
 
-SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k, Endpoint endpoint, bool transposed) :
+SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k, Endpoint endpoint, std::string suffix) :
     m_FileDescriptor(-1),
     m_RawPointer(nullptr),
     m_NumRows(1UL << m),
@@ -14,10 +14,10 @@ SharedMatrixBuffer::SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n
     m_BufferIndex(k),
     m_UniqueId(uniqueId),
     m_Endpoint(endpoint),
-    m_Transposed(transposed)
+    m_Suffix(suffix)
 {
     // Generate the shared memory name based on the process ID and index
-    m_ShmObjectName = CreateShmObjectName(m_UniqueId, m_BufferIndex, m_Transposed);
+    m_ShmObjectName = CreateShmObjectName(m_UniqueId, m_BufferIndex, m_Suffix);
 
     // Calculate size: 2^m * 2^n * sizeof(uint64_t)
     m_BufferBytes = m_NumRows * m_NumColumns * sizeof(uint64_t);
@@ -130,16 +130,10 @@ size_t SharedMatrixBuffer::GetBufferSizeInBytes() const
     return m_BufferBytes;
 }
 
-std::string SharedMatrixBuffer::CreateShmObjectName(uint32_t uniqueId, uint32_t k, bool transposed)
+std::string SharedMatrixBuffer::CreateShmObjectName(uint32_t uniqueId, uint32_t k, std::string suffix)
 {
     std::ostringstream oss;
-    if (transposed)
-    {
-        oss << "transpose_client_uid{" << uniqueId << "}_k{" << k << "}_tr";
-    }
-    else
-    {
-        oss << "transpose_client_uid{" << uniqueId << "}_k{" << k << "}";
-    }
+    oss << "transpose_client_uid{" << uniqueId << "}_k{" << k << "}_" << suffix;
+
     return oss.str();
 }

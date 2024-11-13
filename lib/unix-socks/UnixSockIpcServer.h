@@ -31,31 +31,35 @@ public:
     {
         m_Handler = handler;
 
-        // Socket creation and filling `sockaddr_un` is done in the UnixSockIpcBase constructor
-
         if(bind(this->m_BaseSocketFd, (const sockaddr*)(&(this->m_AddrStruct)), sizeof(this->m_AddrStruct)) < 0)
         {
             close(this->m_BaseSocketFd);
+            std::cerr << "Failed to bind socket (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)) << std::endl;
             throw std::runtime_error("Failed to bind socket (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)));
         }
 
         if (listen(this->m_BaseSocketFd, 16) < 0)
         {
             close(this->m_BaseSocketFd);
+            std::cerr << "Failed to listen on socket (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)) << std::endl;
             throw std::runtime_error("Failed to listen on socket (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)));
         }
 
         this->m_epollFd = epoll_create1(0);
-        if (this->m_epollFd < 0) {
+        if (this->m_epollFd < 0)
+        {
             close(this->m_BaseSocketFd);
+            std::cerr << "Failed to create epoll instance (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)) << std::endl;
             throw std::runtime_error("Failed to create epoll instance (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)));
         }
 
         this->ePollEvent.data.fd = this->m_BaseSocketFd;
         this->ePollEvent.events = EPOLLIN;
 
-        if (epoll_ctl(this->m_epollFd, EPOLL_CTL_ADD, this->m_BaseSocketFd, &(this->ePollEvent)) < 0) {
+        if (epoll_ctl(this->m_epollFd, EPOLL_CTL_ADD, this->m_BaseSocketFd, &(this->ePollEvent)) < 0)
+        {
             close(this->m_BaseSocketFd);
+            std::cerr << "Failed to add server socket to epoll instance (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)) << std::endl;
             throw std::runtime_error("Failed to add server socket to epoll instance (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)));
         }
 
@@ -70,7 +74,11 @@ public:
             return;
         }
         
-        send(context.socket, &message, sizeof(T), 0);
+        int r = send(context.socket, &message, sizeof(T), 0);
+        if (r < 0)
+        {
+            std::cerr << "Failed to send message (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)) << std::endl;
+        }
     }
 
 private:
@@ -97,7 +105,6 @@ private:
             {
                 if (events[i].data.fd == this->m_BaseSocketFd)
                 {
-                    // Register the new client socket with epoll
                     int clientSocket = accept(this->m_BaseSocketFd, nullptr, nullptr);
                     if (clientSocket < 0)
                     {
@@ -119,7 +126,7 @@ private:
                 else if (events[i].events & EPOLLIN)
                 {
                     totalRead = 0;
-                    // Receive the complete the client setup message
+
                     while ((totalRead < BUFFER_SIZE) && this->m_Running)
                     {
                         bytesRead = recv(events[i].data.fd, buffer + totalRead, BUFFER_SIZE - totalRead, MSG_DONTWAIT);
@@ -131,6 +138,7 @@ private:
                             }
                             else
                             {
+                                std::cerr << "recv() Failed (errno: " + std::to_string(errno) + "): " + std::string(strerror(errno)) << std::endl;
                                 epoll_ctl(this->m_epollFd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
                                 close(events[i].data.fd);
                                 this->m_ConnectionCount--;
@@ -142,7 +150,6 @@ private:
                         totalRead += bytesRead;
                     }
 
-                    // Handle message from client
                     m_Handler({events[i].data.fd}, *reinterpret_cast<T*>(buffer));
                 }
             }

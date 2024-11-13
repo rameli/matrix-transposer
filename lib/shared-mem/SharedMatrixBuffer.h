@@ -33,14 +33,13 @@ public:
      * @param n The exponent for the number of columns, resulting in 2^n columns.
      * @param k An arbitrary index used in the shared memory object filename in /dev/shm/.
      * @param endpoint The role of the endpoint in the network connection.
-     * @param transposed Whether the buffer belongs to a transposed matrix.
      * 
      * This constructor creates a shared memory segment with the name formatted as
      * "transpose_client_shm_uid_k", where PID is the process ID and k is the provided index.
      * 
      * @throw std::runtime_error If shared memory creation or mapping fails.
      */
-    SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k, Endpoint endpoint, bool transposed);
+    SharedMatrixBuffer(uint32_t uniqueId, uint32_t m, uint32_t n, uint32_t k, Endpoint endpoint, std::string suffix);
     
     /**
      * @brief Destroys the SharedMatrixBuffer instance and releases resources.
@@ -98,7 +97,7 @@ public:
      * @param k An arbitrary index used in the shared memory object filename.
      * @return A string containing the formatted name of the shared memory object.
      */
-    static std::string CreateShmObjectName(uint32_t uniqueId, uint32_t k, bool transposed);
+    static std::string CreateShmObjectName(uint32_t uniqueId, uint32_t k, std::string suffix);
 
 private:
     uint32_t m_UniqueId;         ///< Unique identifier for the shared memory object.
@@ -110,5 +109,5 @@ private:
     uint32_t m_NumColumns;       ///< Number of columns in the matrix.
     uint32_t m_BufferIndex;      ///< Index used in the shared memory object filename.
     Endpoint m_Endpoint;         ///< The role of the endpoint in the network connection.
-    bool m_Transposed;           ///< Whether the buffer belongs to a transposed matrix.
+    std::string m_Suffix;        ///< A suffix to append to the shared memory object name.
 };
