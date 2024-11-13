@@ -103,12 +103,12 @@ int main(int argc, char* argv[])
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    std::cin.get();
-        for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
-        {
-            FillWithRandom(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffers[bufferIndex]->GetElementCount());
-        }
-    std::cin.get();
+    // std::cin.get();
+    //     for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
+    //     {
+    //         FillWithRandom(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffers[bufferIndex]->GetElementCount());
+    //     }
+    // std::cin.get();
 
     ClientServerMessage unsubscribeMessage;
     ClientServerMessage::GenerateUnsubscribeMessage(unsubscribeMessage, gWorkspace.clientPid);
