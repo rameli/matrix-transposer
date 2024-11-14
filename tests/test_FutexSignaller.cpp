@@ -1,3 +1,4 @@
+#include <atomic>
 #include <cstring>
 #include <fcntl.h>
 #include <filesystem>
@@ -74,7 +75,8 @@ TEST(FutexTestSuite, TwoThreads)
     };
 
     std::thread tWait(futexWait);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Wait for the wait thread to start
+    // Wait for the waiter to create the futex
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::thread tWake(futexWake);
 
     tWait.join();
@@ -84,15 +86,17 @@ TEST(FutexTestSuite, TwoThreads)
 TEST(FutexTestSuite, TwoProcesses)
 {
     uint32_t uniqueId;
-    bool *pFutexSignalledFlag = nullptr;
+    std::atomic<bool> *pFutexSignalledFlag = nullptr;
 
     uniqueId = getpid(); // PID of the parent process (waits for signal from child)
 
-    pFutexSignalledFlag = static_cast<bool*>(mmap(NULL, sizeof(bool), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0));
+    auto ptr = mmap(NULL, sizeof(bool), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     ASSERT_NE(pFutexSignalledFlag, MAP_FAILED) << "Failed to mmap shared memory for futex signalled flag";
 
+    pFutexSignalledFlag = new (ptr) std::atomic<bool>(false);
+
     // Initialize the flag
-    *pFutexSignalledFlag = false;
+    pFutexSignalledFlag->store(false, std::memory_order_relaxed);
 
     // Fork to create child and parent processes
     pid_t pid = fork();
@@ -104,16 +108,22 @@ TEST(FutexTestSuite, TwoProcesses)
         std::unique_ptr<FutexSignaller> pFutex;
         pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waker, "");
 
+        // Wait for the waiter to create the futex
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        *pFutexSignalledFlag = true;
+        pFutexSignalledFlag->store(true, std::memory_order_relaxed);
         pFutex->Wake();
+
+        _exit(0);
     } else {
         // Parent process - Waiter
         std::unique_ptr<FutexSignaller> pFutex;
         ASSERT_NO_THROW(pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waiter, ""));
 
-        EXPECT_EQ((*pFutexSignalledFlag), false);
+        EXPECT_EQ(pFutexSignalledFlag->load(std::memory_order_relaxed), false);
         pFutex->Wait();
-        EXPECT_EQ((*pFutexSignalledFlag), true);
+        EXPECT_EQ(pFutexSignalledFlag->load(std::memory_order_relaxed), true);
+
+        pFutexSignalledFlag->store(false, std::memory_order_relaxed);
+        munmap(ptr, sizeof(bool));
     }
 }

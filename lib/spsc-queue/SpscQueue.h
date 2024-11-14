@@ -21,9 +21,8 @@ public:
 
     const std::string& GetName() const;
     uint32_t GetCapacity() const;
-    uint32_t* GetRawPointer() const;
-    bool Enqueue(bool blocking);
-    bool Deque(bool blocking);
+    bool Enqueue(uint32_t item);
+    bool Deque(uint32_t& item);
 
 private:
     struct QueueData {

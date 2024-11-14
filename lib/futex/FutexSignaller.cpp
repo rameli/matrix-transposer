@@ -14,11 +14,10 @@
 #include <fstream>
 #include <cstdlib>
 
+#include "MemoryUtils.h"
 #include "FutexSignaller.h"
 
 using std::string;
-
-static constexpr uint32_t DEFAULT_CACHE_LINE_SIZE = 64;
 
 FutexSignaller::FutexSignaller(uint32_t ownerPid, Role role, const std::string& nameSuffix) : 
     m_OwnerPid(ownerPid),
@@ -27,17 +26,23 @@ FutexSignaller::FutexSignaller(uint32_t ownerPid, Role role, const std::string& 
     SharedMemory::Ownership ownership = (role == Role::Waiter) ? SharedMemory::Ownership::Owner : SharedMemory::Ownership::Borrower;
     SharedMemory::BufferInitMode bufferInitMode = role == Role::Waiter ? SharedMemory::BufferInitMode::Zero : SharedMemory::BufferInitMode::NoInit;
     string shmObjectName = CreateShmObjectName(m_OwnerPid, nameSuffix);
-    size_t bufferSizeInBytes = GetCacheLineSize(DEFAULT_CACHE_LINE_SIZE);
-
-    if (bufferSizeInBytes < sizeof(uint32_t))
+    size_t bufferSizeInBytes = MemoryUtils::getCacheLineSize();
+    if (bufferSizeInBytes == 0)
     {
-        bufferSizeInBytes = sizeof(uint32_t);
+        bufferSizeInBytes = 64; // At least one full cache line of size 64 bytes
     }
 
     mp_SharedMemory = std::make_unique<SharedMemory>(bufferSizeInBytes, shmObjectName, ownership, bufferInitMode);
     void* ptr = mp_SharedMemory->GetRawPointer();
 
-    m_RawPointer = new (ptr) std::atomic<uint32_t>(0);
+    if (role == Role::Waiter)
+    {
+        m_RawPointer = new (ptr) std::atomic<uint32_t>(0);
+    }
+    else
+    {
+        m_RawPointer = static_cast<std::atomic<uint32_t>*>(ptr);
+    }
 }
 
 std::string FutexSignaller::CreateShmObjectName(uint32_t ownerPid, const std::string& nameSuffix)
@@ -53,11 +58,13 @@ FutexSignaller::~FutexSignaller()
 
 void FutexSignaller::Wait()
 {
+    // Loop is required to handle spurious wakeups in FUTEX_WAIT
     while (1)
     {
         uint32_t expected = 1; // Reset expected value in each iteration as compare_exchange_strong modifies it if the condition fails
         if (m_RawPointer->compare_exchange_strong(expected, 0))
         {
+            // Already signalled. No waiting required. Set the futex to non-signalled state and return.
             break;
         }
 
@@ -71,14 +78,12 @@ void FutexSignaller::Wait()
 
 bool FutexSignaller::IsWaiting()
 {
-    return (m_RawPointer->load(std::memory_order_acquire) == 0);
+    return (m_RawPointer->load(std::memory_order_relaxed) == 0);
 }
 
 void FutexSignaller::Wake()
 {
     uint32_t expected = 0;
-
-    // Attempt to release the lock by setting m_RawPointer to 0 (unlocked).
     if (m_RawPointer->compare_exchange_strong(expected, 1))
     {
         // Wake up one waiting thread if any.
@@ -88,28 +93,4 @@ void FutexSignaller::Wake()
             std::cout << "FUTEX_WAKE error(" << errno << "): " << strerror(errno) << std::endl;
         }
     }
-}
-
-uint32_t FutexSignaller::GetCacheLineSize(uint32_t defaultSize)
-{
-    const std::string CACHE_LINE_SIZE_FILE_PATH = "/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size";
-    
-    // Attempt to open the file
-    std::ifstream file(CACHE_LINE_SIZE_FILE_PATH);
-    if (!file.is_open()) {
-        std::cerr << "Unable to open cache line size file: " << CACHE_LINE_SIZE_FILE_PATH << std::endl;
-        return defaultSize;
-    }
-    
-    // Read the cache line size from the file
-    uint32_t cacheLineSize;
-    file >> cacheLineSize;
-    file.close();
-
-    if (cacheLineSize <= 0) {
-        std::cerr << "Failed to retrieve a valid cache line size." << std::endl;
-        return defaultSize;
-    }
-
-    return cacheLineSize;
 }

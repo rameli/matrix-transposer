@@ -24,7 +24,7 @@ add_library(mem-utils INTERFACE)
 add_library(spsc-queue SHARED lib/spsc-queue/SpscQueue.cpp)
 add_library(unix-socks INTERFACE)
 
-target_include_directories(futex PUBLIC lib/futex lib/shared-mem)
+target_include_directories(futex PUBLIC lib/futex lib/mem-utils lib/shared-mem)
 target_include_directories(matrix-buf PUBLIC lib/shared-mem)
 target_include_directories(presentation INTERFACE lib/presentation)
 target_include_directories(shared-mem PUBLIC lib/shared-mem)

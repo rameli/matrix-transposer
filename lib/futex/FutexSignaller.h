@@ -25,7 +25,6 @@ public:
 
 private:
     static std::string CreateShmObjectName(uint32_t ownerPid, const std::string& nameSuffix);
-    uint32_t GetCacheLineSize(uint32_t defaultSize);
 
     uint32_t m_OwnerPid;
     std::atomic<uint32_t> *m_RawPointer;

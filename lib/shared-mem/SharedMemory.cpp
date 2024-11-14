@@ -21,16 +21,21 @@ SharedMemory::SharedMemory(size_t sizeInBytes, const std::string name, Ownership
 
         if (m_FileDescriptor < 0)
         {
-            if (errno == EEXIST) {
-                shm_unlink(m_ShmObjectName.c_str());
-                m_FileDescriptor = shm_open(m_ShmObjectName.c_str(), O_RDWR | O_CREAT | O_EXCL, 0666);
-            }
-            if (m_FileDescriptor < 0) {
-                ostringstream oss;
-                oss << "Failed to create shared memory object for " << name << ". errno(" << errno << "): " << strerror(errno);
-                std::cerr << oss.str() << std::endl;
-                throw std::runtime_error(oss.str());
-            }
+            ostringstream oss;
+            oss << "Failed to create shared memory object for " << name << ". errno(" << errno << "): " << strerror(errno);
+            std::cerr << oss.str() << std::endl;
+            throw std::runtime_error(oss.str());
+        }
+
+        if (ftruncate(m_FileDescriptor, m_SizeInBytes) < 0)
+        {
+            close(m_FileDescriptor);
+            shm_unlink(m_ShmObjectName.c_str());
+            
+            ostringstream oss;
+            oss << "Failed to set shared memory size (" << m_SizeInBytes << " bytes) for " << name << ". errno(" << errno << "): " << strerror(errno);
+            std::cerr << oss.str() << std::endl;
+            throw std::runtime_error(oss.str());
         }
     }
     else if (m_Ownership == Ownership::Borrower)
@@ -44,15 +49,6 @@ SharedMemory::SharedMemory(size_t sizeInBytes, const std::string name, Ownership
             std::cerr << oss.str() << std::endl;
             throw std::runtime_error(oss.str());
         }
-    }
-
-    if (ftruncate(m_FileDescriptor, m_SizeInBytes) == -1)
-    {
-        close(m_FileDescriptor);
-        shm_unlink(m_ShmObjectName.c_str());
-        
-        ostringstream oss;
-        oss << "Failed to set shared memory size (" << m_SizeInBytes << " bytes) for " << name << ". errno(" << errno << "): " << strerror(errno);
     }
 
     m_RawPointer = mmap(0, m_SizeInBytes, PROT_READ | PROT_WRITE, MAP_SHARED, m_FileDescriptor, 0);
