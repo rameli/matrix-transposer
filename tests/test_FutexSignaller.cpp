@@ -103,7 +103,8 @@ TEST(FutexTestSuite, TwoProcesses)
 
     ASSERT_GE(pid, 0) << "Failed to fork process";
 
-    if (pid == 0) {
+    if (pid == 0)
+    {
         // Child process - Signaler
         std::unique_ptr<FutexSignaller> pFutex;
         pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waker, "");
@@ -114,7 +115,9 @@ TEST(FutexTestSuite, TwoProcesses)
         pFutex->Wake();
 
         _exit(0);
-    } else {
+    }
+    else
+    {
         // Parent process - Waiter
         std::unique_ptr<FutexSignaller> pFutex;
         ASSERT_NO_THROW(pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waiter, ""));

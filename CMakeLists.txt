@@ -67,7 +67,7 @@ enable_testing()
 # Add test source files
 set(TEST_SOURCES
     tests/test_FutexSignaller.cpp
-    # tests/test_SharedMatrixBuffer.cpp
+    tests/test_SharedMatrixBuffer.cpp
     # tests/test_UnixSockets.cpp
 )
 

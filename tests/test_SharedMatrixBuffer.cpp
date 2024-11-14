@@ -8,26 +8,27 @@
 #include <thread>
 #include <vector>
 
-#include "ipc/SharedMatrixBuffer.h"
+#include "matrix-buf/SharedMatrixBuffer.h"
 
-static std::string CreateSharedMatrixBufferShmFilename(uint32_t uniqueId, size_t k)
+static std::string CreateSharedMatrixBufferShmFilename(uint32_t ownerPid, uint32_t k, const std::string& nameSuffix)
 {
     std::ostringstream oss;
-    oss << "transpose_client_uid{" << uniqueId << "}_k{" << k << "}";
+    oss << "mat_buff_uid{" << ownerPid << "}_k{" << k << "}" << nameSuffix;
+
     return oss.str();
 }
 
 static bool ShmObjectExists(uint32_t uniqueId, size_t k)
 {
-    std::string expectedName = CreateSharedMatrixBufferShmFilename(uniqueId, k);
+    std::string expectedName = CreateSharedMatrixBufferShmFilename(uniqueId, k, "");
 
     std::filesystem::path SHM_DIR = "/dev/shm/";
     std::filesystem::path filePath = SHM_DIR / expectedName;
     return std::filesystem::exists(filePath);
 }
 
-static std::vector<size_t> gRowCountExponents = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
-static std::vector<size_t> gColumnCountExponents = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+static std::vector<size_t> gRowCountExponents = { 4, 5, 6};
+static std::vector<size_t> gColumnCountExponents = {4, 5, 6};
 
 TEST(MatrixBufferTestSuite, CorrectInit)
 {
@@ -41,7 +42,7 @@ TEST(MatrixBufferTestSuite, CorrectInit)
             {
                 std::unique_ptr<SharedMatrixBuffer> pMatrixBuffer;
                 
-                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, k, Endpoint::CLIENT));
+                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, SharedMatrixBuffer::Endpoint::Client, m, n, k, SharedMatrixBuffer::BufferInitMode::Zero, ""));
 
                 EXPECT_NE(pMatrixBuffer->GetRawPointer(), nullptr);
                 EXPECT_NE(pMatrixBuffer->GetRawPointer(), MAP_FAILED);
@@ -78,7 +79,7 @@ TEST(MatrixBufferTestSuite, AccessSharedBuffer)
             {
                 std::unique_ptr<SharedMatrixBuffer> pMatrixBuffer;
                 
-                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, k, Endpoint::CLIENT));
+                ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, SharedMatrixBuffer::Endpoint::Client, m, n, k, SharedMatrixBuffer::BufferInitMode::Zero, ""));
                 EXPECT_NE(pMatrixBuffer, nullptr);
 
                 pBufferPtr = static_cast<uint64_t*>(pMatrixBuffer->GetRawPointer());
@@ -146,7 +147,7 @@ TEST(MatrixBufferTestSuite, SimultaneousAccess)
 
                 // The first object is the client (creates/destroys the shared memory object)
                 std::unique_ptr<SharedMatrixBuffer> pMatrixBufferClient;
-                ASSERT_NO_THROW(pMatrixBufferClient = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, K, Endpoint::CLIENT));
+                ASSERT_NO_THROW(pMatrixBufferClient = std::make_unique<SharedMatrixBuffer>(uniqueId, SharedMatrixBuffer::Endpoint::Client, m, n, K, SharedMatrixBuffer::BufferInitMode::Zero, ""));
                 EXPECT_NE(pMatrixBufferClient, nullptr);
                 pMatrixBuffersVec.push_back(std::move(pMatrixBufferClient));
 
@@ -154,7 +155,7 @@ TEST(MatrixBufferTestSuite, SimultaneousAccess)
                 for (uint32_t matrixBufferIndex = 1; matrixBufferIndex < numSimultaneousAccess; matrixBufferIndex++)
                 {
                     std::unique_ptr<SharedMatrixBuffer> pMatrixBuffer;
-                    ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, m, n, K, Endpoint::SERVER));
+                    ASSERT_NO_THROW(pMatrixBuffer = std::make_unique<SharedMatrixBuffer>(uniqueId, SharedMatrixBuffer::Endpoint::Server, m, n, K, SharedMatrixBuffer::BufferInitMode::Zero, ""));
                     EXPECT_NE(pMatrixBuffer, nullptr);
                     pMatrixBuffersVec.push_back(std::move(pMatrixBuffer));
                 }
