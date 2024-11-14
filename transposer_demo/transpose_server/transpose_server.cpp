@@ -136,7 +136,6 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
             return;
         }
 
-
         {
             unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
 
@@ -205,11 +204,9 @@ static void WorkloadDispatcher()
         shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
         for (auto& [clientId, clientContext] : gWorkspace.clientBank)
         {
-            // std::this_thread::sleep_for(std::chrono::milliseconds(100));
             uint32_t request;
             if (clientContext.pRequestQueue->Dequeue(request))
             {
-                std::cerr << "Client PID: " << clientContext.id << " Request: " << request << std::endl;
                 clientContext.stats.totalRequests++;
                 if (clientContext.pTransposeReadyFutex->IsWaiting())
                 {
