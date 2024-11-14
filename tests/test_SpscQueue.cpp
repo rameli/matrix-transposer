@@ -31,14 +31,13 @@ TEST(SpscQueueTestSuite, SingleProcess)
         ASSERT_EQ(item, i);
     }
 
-    // Queue should be empty now
     uint32_t item;
     ASSERT_FALSE(queue.Dequeue(item));
 }
 
 TEST(SpscQueueTestSuite, TwoProcesses)
 {
-    constexpr size_t CAPACITY = 1024*1024*100;
+    constexpr size_t CAPACITY = 1024*1024;
 
     uint32_t producerPid = getpid();
     SpscQueue queue(producerPid, SpscQueue::Role::Producer, CAPACITY, "");
@@ -80,76 +79,71 @@ TEST(SpscQueueTestSuite, TwoProcesses)
     }
 }
 
-// // Test case 3: Attempt to Enqueue when the queue is full
-// TEST(SpscQueueTestSuite, TestQueueFull) {
-//     cleanup_shm(); // Ensure no leftover shared memory
+TEST(SpscQueueTestSuite, TestQueueFull)
+{
+    constexpr size_t CAPACITY = 1024*1024;
+    SpscQueue queue(getpid(), SpscQueue::Role::Producer, CAPACITY, "");
 
-//     SpscQueue queue(shm_name, capacity, true);
+    for (int i = 0; i < CAPACITY; i++)
+    {
+        ASSERT_TRUE(queue.Enqueue(i));
+    }
 
-//     // Fill the queue
-//     for (int i = 0; i < capacity - 1; ++i) {
-//         ASSERT_TRUE(queue.Enqueue(i));
-//     }
+    ASSERT_FALSE(queue.Enqueue(0));
+}
 
-//     // Attempt to Enqueue one more item
-//     ASSERT_FALSE(queue.Enqueue(999));
+TEST(SpscQueueTestSuite, TestQueueEmpty)
+{
+    constexpr size_t CAPACITY = 1024*1024;
+    SpscQueue queue(getpid(), SpscQueue::Role::Producer, CAPACITY, "");
 
-//     cleanup_shm();
-// }
+    uint32_t item;
+    ASSERT_FALSE(queue.Dequeue(item));
+}
 
-// // Test case 4: Attempt to Dequeue when the queue is empty
-// TEST(SpscQueueTestSuite, TestQueueEmpty) {
-//     cleanup_shm(); // Ensure no leftover shared memory
+TEST(SpscQueueTestSuite, TestMultipleItems)
+{
+    uint32_t producerPid = getpid();
+    constexpr size_t CAPACITY = 1024*1024;
+    constexpr size_t TOTAL_ITEMS = 1234;
 
-//     SpscQueue queue(shm_name, capacity, true);
+    SpscQueue producerQueue(producerPid, SpscQueue::Role::Producer, CAPACITY, "");
 
-//     uint32_t item;
-//     ASSERT_FALSE(queue.Dequeue(item));
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        FAIL() << "Failed to fork process";
+    }
+    else if (pid == 0)
+    {
+        SpscQueue consumerQueue(producerPid, SpscQueue::Role::Consumer, CAPACITY, "");
 
-//     cleanup_shm();
-// }
+        int received = 0;
+        uint32_t item;
+        while (received < TOTAL_ITEMS)
+        {
+            if (consumerQueue.Dequeue(item))
+            {
+                EXPECT_EQ(item, received);
+                received++;
+            }
+        }
+        exit(0);
+    }
+    else
+    {
+        for (int i = 0; i < TOTAL_ITEMS; i++)
+        {
+            while (!producerQueue.Enqueue(i))
+            {
+            }
+        }
 
-// // Test case 5: Enqueue and Dequeue multiple items across processes
-// TEST(SpscQueueTestSuite, TestMultipleItems) {
-//     cleanup_shm(); // Ensure no leftover shared memory
-
-//     pid_t pid = fork();
-//     if (pid == -1) {
-//         FAIL() << "Failed to fork process";
-//     } else if (pid == 0) {
-//         // Child process - Consumer
-//         SpscQueue queue(shm_name, capacity, false);
-
-//         int received = 0;
-//         int expected_total = 100;
-//         uint32_t item;
-//         while (received < expected_total) {
-//             if (queue.Dequeue(item)) {
-//                 EXPECT_EQ(item, received);
-//                 ++received;
-//             } else {
-//                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
-//             }
-//         }
-//         exit(0);
-//     } else {
-//         // Parent process - Producer
-//         SpscQueue queue(shm_name, capacity, true);
-
-//         int total_items = 100;
-//         for (int i = 0; i < total_items; ++i) {
-//             while (!queue.Enqueue(i)) {
-//                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
-//             }
-//         }
-
-//         // Wait for child process to finish
-//         int status;
-//         waitpid(pid, &status, 0);
-//         ASSERT_TRUE(WIFEXITED(status));
-//         ASSERT_EQ(WEXITSTATUS(status), 0);
-
-//         cleanup_shm();
-//     }
-// }
+        // Wait for child process to finish
+        int status;
+        waitpid(pid, &status, 0);
+        ASSERT_TRUE(WIFEXITED(status));
+        ASSERT_EQ(WEXITSTATUS(status), 0);
+    }
+}
 
