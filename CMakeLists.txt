@@ -99,6 +99,12 @@ add_executable(run_benchmarks ${BENCHMARK_SOURCES})
 target_include_directories(run_benchmarks PUBLIC lib)
 target_link_libraries(run_benchmarks PRIVATE benchmark::benchmark futex matrix-buf shared-mem unix-socks spsc-queue mem-utils)
 
+# Set maximum optimization for the benchmark build
+target_compile_options(run_benchmarks PRIVATE $<$<CONFIG:Release>:-O3>)
+
+# Force Release build type when building benchmarks
+set_target_properties(run_benchmarks PROPERTIES CMAKE_BUILD_TYPE Release)
+
 FetchContent_Declare(
     benchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git
