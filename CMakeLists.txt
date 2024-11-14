@@ -64,6 +64,14 @@ target_compile_options(transpose_client PRIVATE $<$<CONFIG:Debug>:-g>)
 # Add GoogleTest for testing
 # -------------------------------------------------------
 
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.15.2
+)
+FetchContent_MakeAvailable(googletest)
+
 enable_testing()
 
 # Add test source files
@@ -87,7 +95,6 @@ gtest_discover_tests(run_tests)
 # Add Google Benchmark for benchmarking
 # -------------------------------------------------------
 
-include(FetchContent)
 set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
 
 set(BENCHMARK_SOURCES
