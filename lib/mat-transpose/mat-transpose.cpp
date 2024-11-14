@@ -14,7 +14,7 @@ struct Block
     int j_start, j_end;
 };
 
-void naive_transpose(uint64_t* src, uint64_t* dst, int M, int N)
+void TransposeNaive(uint64_t* src, uint64_t* dst, int M, int N)
 {
     // src is M x N
     // dst is N x M
@@ -28,7 +28,7 @@ void naive_transpose(uint64_t* src, uint64_t* dst, int M, int N)
 }
 
 // Naive single-threaded in-place transpose (for square matrices)
-void naive_transpose_in_place(uint64_t* matrix, int N)
+void TransposeNaiveInPlace(uint64_t* matrix, int N)
 {
     for (int i = 0; i < N; ++i)
     {
@@ -40,7 +40,7 @@ void naive_transpose_in_place(uint64_t* matrix, int N)
 }
 
 // Cache-friendly multi-threaded transpose using tiling (out-of-place)
-void tile_transpose_mt(uint64_t* src, uint64_t* dst, int M, int N, int B, int num_threads)
+void TransposeTiledMultiThreaded(uint64_t* src, uint64_t* dst, int M, int N, int B, int num_threads)
 {
     int num_blocks_row = (M + B - 1) / B;
     int num_blocks_col = (N + B - 1) / B;
@@ -90,7 +90,7 @@ void tile_transpose_mt(uint64_t* src, uint64_t* dst, int M, int N, int B, int nu
 }
 
 // Corrected Cache-friendly multi-threaded in-place transpose using tiling (for square matrices)
-void tile_transpose_in_place_mt(uint64_t* matrix, int N, int B, int num_threads)
+void TransposeNaiveInPlaceMultiThreaded(uint64_t* matrix, int N, int B, int num_threads)
 {
     int num_blocks = (N + B - 1) / B;
     std::vector<std::vector<Block>> thread_blocks(num_threads);
@@ -195,7 +195,7 @@ void transpose_recursive(uint64_t* src, uint64_t* dst, int src_row, int src_col,
     }
 }
 
-void transpose_recursive_wrapper(uint64_t* src, uint64_t* dst, int M, int N)
+void TransposeRecursive(uint64_t* src, uint64_t* dst, int M, int N)
 {
     transpose_recursive(src, dst, 0, 0, 0, 0, M, N, N, M);
 }
@@ -231,13 +231,13 @@ void transpose_recursive_in_place(uint64_t* matrix, int row, int col, int size, 
     }
 }
 
-void transpose_recursive_in_place_wrapper(uint64_t* matrix, int N)
+void TransposeRecursiveInPlace(uint64_t* matrix, int N)
 {
     transpose_recursive_in_place(matrix, 0, 0, N, N);
 }
 
 // Verify correctness by comparing two matrices
-bool verify(uint64_t* A, uint64_t* B, int rows, int cols)
+bool MatricesAreEqual(uint64_t* A, uint64_t* B, int rows, int cols)
 {
     // A and B are matrices of size rows x cols
     for (int i = 0; i < rows * cols; ++i)
