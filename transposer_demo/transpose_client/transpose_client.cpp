@@ -19,13 +19,13 @@ using std::vector;
 using std::unique_ptr;
 
 using MatrixTransposer::Constants::SERVER_SOCKET_ADDRESS;
-using MatrixTransposer::Constants::SHM_NAME_MATRIX_SUFFIX;
-using MatrixTransposer::Constants::SHM_NAME_TR_MATRIX_SUFFIX;
-using MatrixTransposer::Constants::SHM_NAME_REQ_BUF_SUFFIX;
+using MatrixTransposer::Constants::MATRIX_BUF_NAME_SUFFIX;
+using MatrixTransposer::Constants::TR_MATRIX_BUF_NAME_SUFFIX;
+using MatrixTransposer::Constants::REQ_QUEUE_NAME_SUFFIX;
+using MatrixTransposer::Constants::REQ_QUEUE_CAPACITY;
 
 ClientWorkspace gWorkspace;
 
-bool responseReceived = false;
 
 static bool ProcessArguments(int argc, char* argv[], uint32_t &m, uint32_t &n, uint32_t &k)
  {
@@ -52,7 +52,7 @@ static bool ProcessArguments(int argc, char* argv[], uint32_t &m, uint32_t &n, u
 static void MessageHandler(const ClientServerMessage& message)
 {
     std::cout << ClientServerMessage::ToString(message) << std::endl;
-    responseReceived = true;
+    gWorkspace.subscribeResponseReceived = true;
 }
 
 int main(int argc, char* argv[])
@@ -62,20 +62,20 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    gWorkspace.clientPid = getpid();
-
     try
     {
+        gWorkspace.clientPid = getpid();
+        gWorkspace.subscribeResponseReceived = false;
         gWorkspace.pIpcClient = std::make_unique<UnixSockIpcClient<ClientServerMessage>>(SERVER_SOCKET_ADDRESS, MessageHandler);
         gWorkspace.pTransposeReadyFutex = std::make_unique<FutexSignaller>(gWorkspace.clientPid, FutexSignaller::Role::Waiter, "");
-        // gWorkspace.pRequestBuffer = std::make_unique<SharedMemory> 
+        gWorkspace.pRequestQueue = std::make_unique<SpscQueue>(gWorkspace.clientPid, SpscQueue::Role::Producer, REQ_QUEUE_CAPACITY, REQ_QUEUE_NAME_SUFFIX);
 
         gWorkspace.matrixBuffers.reserve(gWorkspace.buffers.k);
         gWorkspace.matrixBuffersTr.reserve(gWorkspace.buffers.k);
         for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
         {
-            gWorkspace.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Random, SHM_NAME_MATRIX_SUFFIX));
-            gWorkspace.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Zero, SHM_NAME_TR_MATRIX_SUFFIX));
+            gWorkspace.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Random, MATRIX_BUF_NAME_SUFFIX));
+            gWorkspace.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Zero, TR_MATRIX_BUF_NAME_SUFFIX));
         }
     }
     catch(const std::exception& e)
@@ -88,16 +88,25 @@ int main(int argc, char* argv[])
     ClientServerMessage::GenerateSubscribeMessage(subscribeMessage, gWorkspace.clientPid, gWorkspace.buffers.m, gWorkspace.buffers.n, gWorkspace.buffers.k);
     gWorkspace.pIpcClient->Send(subscribeMessage);
 
-    while (!responseReceived)
+    while (!gWorkspace.subscribeResponseReceived)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    std::cin.get();
+    for (int i = 0; i < 10; i++)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        gWorkspace.pRequestQueue->Enqueue(gWorkspace.clientPid);
+        gWorkspace.pTransposeReadyFutex->Wait();
+        std::cout << "Transpose operation completed: " << i << std::endl;
+    }
 
     ClientServerMessage unsubscribeMessage;
     ClientServerMessage::GenerateUnsubscribeMessage(unsubscribeMessage, gWorkspace.clientPid);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+
+    // std::cin.get();
     gWorkspace.pIpcClient->Send(unsubscribeMessage);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));

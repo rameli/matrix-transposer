@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <unistd.h>
 #include <vector>
+#include <mutex>
 #include <unordered_map>
 #include <sstream>
 #include <mutex>
@@ -23,26 +24,28 @@ using std::vector;
 using std::unique_ptr;
 using std::unordered_map;
 using std::unique_lock;
-using std::mutex;
+using std::shared_lock;
+using std::shared_mutex;
 
 using MatrixTransposer::Constants::SERVER_SOCKET_ADDRESS;
-using MatrixTransposer::Constants::SHM_NAME_MATRIX_SUFFIX;
-using MatrixTransposer::Constants::SHM_NAME_TR_MATRIX_SUFFIX;
-using MatrixTransposer::Constants::SHM_NAME_REQ_BUF_SUFFIX;
+using MatrixTransposer::Constants::MATRIX_BUF_NAME_SUFFIX;
+using MatrixTransposer::Constants::TR_MATRIX_BUF_NAME_SUFFIX;
+using MatrixTransposer::Constants::REQ_QUEUE_NAME_SUFFIX;
+using MatrixTransposer::Constants::REQ_QUEUE_CAPACITY;
 using MatrixTransposer::Constants::MAX_CLIENTS;
 
 ServerWorkspace gWorkspace;
 
 static bool ClientExists(uint32_t clientId)
 {
-    unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+    shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
     return gWorkspace.clientBank.contains(clientId);
 }
 
 static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, const UnixSockIpcContext& context)
 {
     {
-        unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+        unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
 
         if (gWorkspace.clientBank.size() >= MAX_CLIENTS)
         {
@@ -64,18 +67,18 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         newClientContext.matrixBuffersTr.reserve(k);
 
         newClientContext.pTransposeReadyFutex = std::make_unique<FutexSignaller>(clientId, FutexSignaller::Role::Waker, "");
-        // newClientContext.pRequestBuffer = std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Role::Server, m, n, 0, SHM_NAME_REQ_BUF_SUFFIX);
+        newClientContext.pRequestQueue = std::make_unique<SpscQueue>(clientId, SpscQueue::Role::Consumer, REQ_QUEUE_CAPACITY, REQ_QUEUE_NAME_SUFFIX);
 
         for (uint32_t bufferIndex = 0; bufferIndex < k; bufferIndex++)
         {
-            newClientContext.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SharedMatrixBuffer::BufferInitMode::NoInit, SHM_NAME_MATRIX_SUFFIX));
-            newClientContext.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SharedMatrixBuffer::BufferInitMode::NoInit, SHM_NAME_TR_MATRIX_SUFFIX));
+            newClientContext.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SharedMatrixBuffer::BufferInitMode::NoInit, MATRIX_BUF_NAME_SUFFIX));
+            newClientContext.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SharedMatrixBuffer::BufferInitMode::NoInit, TR_MATRIX_BUF_NAME_SUFFIX));
         }
     }
     catch(const std::exception& e)
     {
         {
-            unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+            unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
             gWorkspace.clientBank.erase(clientId);
         }
         std::cout << "Failed to set up client context for client PID: " << clientId << std::endl;
@@ -88,7 +91,7 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
 
 static void RemoveClient(uint32_t clientId)
 {
-    unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+    unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
     gWorkspace.clientBank.erase(clientId);
 }
 
@@ -170,7 +173,7 @@ static void DisplayServerStats()
         table.clear();
 
         {
-            unique_lock<mutex> lock(gWorkspace.clientBankMutex);
+            shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
             for (const auto& clientContext : gWorkspace.clientBank)
             {
                 table.addRow({std::to_string(clientContext.first),
@@ -192,7 +195,25 @@ static void DisplayServerStats()
 
 static void WorkloadDispatcher()
 {
-    
+    while (gWorkspace.running)
+    {
+        shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
+        for (auto& [clientId, clientContext] : gWorkspace.clientBank)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+            uint32_t request;
+            if (clientContext.pRequestQueue->Dequeue(request))
+            {
+                std::cerr << "Client PID: " << clientId << " Request: " << request << std::endl;
+                clientContext.stats.totalRequests++;
+                if (clientContext.pTransposeReadyFutex->IsWaiting())
+                {
+                    clientContext.pTransposeReadyFutex->Wake();
+                }
+            }
+        }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -212,6 +233,7 @@ int main(int argc, char* argv[])
     }
 
     std::jthread serverStatsThread(DisplayServerStats);
+    std::jthread workloadDispatcherThread(WorkloadDispatcher);
 
     std::cin.get();
     gWorkspace.running = false;

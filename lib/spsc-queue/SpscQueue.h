@@ -35,7 +35,6 @@ private:
 
     size_t CalculateBufferSize();
     static std::string CreateShmObjectName(uint32_t ownerPid, const std::string& nameSuffix);
-    static std::string CreateFutexObjectName(uint32_t ownerPid, const std::string& nameSuffix);
 
     uint32_t m_OwnerPid;
     Role m_Role;
@@ -43,6 +42,5 @@ private:
 
     QueueData* mp_QueueData;
 
-    std::unique_ptr<FutexSignaller> mp_Futex;
     std::unique_ptr<SharedMemory> mp_SharedMemory;
 };

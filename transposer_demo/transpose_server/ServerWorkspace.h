@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <memory>
-#include <mutex>
+#include <shared_mutex>
 
 #include "ClientContext.h"
 #include "unix-socks/UnixSockIpcServer.h"
@@ -15,6 +15,6 @@ struct ServerWorkspace
     bool running;
     uint32_t serverPid;
     ClientBank clientBank;
-    std::mutex clientBankMutex;
+    std::shared_mutex clientBankMutex;
     std::unique_ptr<UnixSockIpcServer<ClientServerMessage>> pIpcServer;
 };
