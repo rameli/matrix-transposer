@@ -19,6 +19,7 @@ add_library(futex SHARED lib/futex/FutexSignaller.cpp)
 add_library(matrix-buf SHARED lib/matrix-buf/SharedMatrixBuffer.cpp)
 add_library(presentation INTERFACE)
 add_library(shared-mem SHARED lib/shared-mem/SharedMemory.cpp)
+add_library(mat-transpose SHARED lib/mat-transpose/mat-transpose.cpp)
 add_library(mem-utils INTERFACE)
 add_library(unix-socks INTERFACE)
 add_library(spsc-queue SHARED lib/spsc-queue/SpscQueue.cpp)
@@ -80,12 +81,13 @@ set(TEST_SOURCES
     tests/test_SharedMatrixBuffer.cpp
     tests/test_SpscQueue.cpp
     tests/test_MemoryUtils.cpp
+    tests/test_mat-transpose.cpp
 )
 
 add_executable(run_tests ${TEST_SOURCES})
 
 target_include_directories(run_tests PUBLIC lib)
-target_link_libraries(run_tests PRIVATE gtest gtest_main futex matrix-buf shared-mem unix-socks spsc-queue mem-utils)
+target_link_libraries(run_tests PRIVATE gtest gtest_main futex matrix-buf shared-mem unix-socks spsc-queue mem-utils mat-transpose)
 
 # Automatically discover tests
 include(GoogleTest)
