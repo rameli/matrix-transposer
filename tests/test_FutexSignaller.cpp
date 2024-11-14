@@ -114,7 +114,7 @@ TEST(FutexTestSuite, TwoProcesses)
         pFutexSignalledFlag->store(true, std::memory_order_relaxed);
         pFutex->Wake();
 
-        _exit(0);
+        exit(0);
     }
     else
     {

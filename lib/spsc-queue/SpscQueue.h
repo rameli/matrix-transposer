@@ -23,7 +23,7 @@ public:
     const std::string& GetName() const;
     uint32_t GetCapacity() const;
     bool Enqueue(uint32_t item);
-    bool Deque(uint32_t& item);
+    bool Dequeue(uint32_t& item);
 
 private:
     struct QueueData

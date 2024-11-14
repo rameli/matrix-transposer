@@ -21,7 +21,7 @@ using std::string;
 SpscQueue::SpscQueue(uint32_t ownerPid, Role role, size_t capacity, const std::string& nameSuffix) : 
     m_OwnerPid(ownerPid),
     m_Role(role),
-    m_Capacity(capacity)
+    m_Capacity(capacity+1)
 {
     if (m_Capacity < 2)
     {
@@ -70,7 +70,7 @@ bool SpscQueue::Enqueue(uint32_t item)
     return true;
 }
 
-bool SpscQueue::Deque(uint32_t& item)
+bool SpscQueue::Dequeue(uint32_t& item)
 {
     size_t tail = mp_QueueData->tail.load(std::memory_order_relaxed);
 
@@ -111,5 +111,5 @@ size_t SpscQueue::CalculateBufferSize()
         cacheLineSize = 64; // At least one full cache line of size 64 bytes
     }
 
-    return ((sizeof(QueueData) + m_Capacity * sizeof(uint32_t))/cacheLineSize) * cacheLineSize;
+    return (((sizeof(QueueData) + m_Capacity * sizeof(uint32_t))/cacheLineSize) + 1)* cacheLineSize;
 }
