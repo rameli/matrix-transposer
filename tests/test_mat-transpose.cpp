@@ -157,6 +157,7 @@ TEST_P(TileMultiThreadedTest, TileMultiThreaded)
         originalMat[i] = i;
     }
 
+
     TransposeNaive(originalMat, refTranspose, rowCount, columnCount);
     TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
 
@@ -167,7 +168,8 @@ TEST_P(TileMultiThreadedTest, TileMultiThreaded)
     delete[] refTranspose;
 }
 
-INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_SUITE_P
+(
     TileMultiThreadedTests,
     TileMultiThreadedTest,
     ::testing::Combine(
