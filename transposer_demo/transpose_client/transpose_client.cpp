@@ -51,7 +51,7 @@ static bool ProcessArguments(int argc, char* argv[], uint32_t &m, uint32_t &n, u
 
 static void MessageHandler(const ClientServerMessage& message)
 {
-    std::cout << ClientServerMessage::ToString(message) << std::endl;
+    // std::cout << ClientServerMessage::ToString(message) << std::endl;
     gWorkspace.subscribeResponseReceived = true;
 }
 
@@ -93,13 +93,13 @@ int main(int argc, char* argv[])
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < gWorkspace.buffers.k; i++)
     {
-        std::cout << "Req " << i;
+        // std::cout << "Req " << i;
         // std::this_thread::sleep_for(std::chrono::milliseconds(10));
         gWorkspace.pRequestQueue->Enqueue(gWorkspace.clientPid);
         gWorkspace.pTransposeReadyFutex->Wait();
-        std::cout << " ... completed: " << std::endl;
+        // std::cout << " ... completed: " << std::endl;
     }
 
     ClientServerMessage unsubscribeMessage;
@@ -107,7 +107,7 @@ int main(int argc, char* argv[])
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 
-    std::cin.get();
+    // std::cin.get();
     gWorkspace.pIpcClient->Send(unsubscribeMessage);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
