@@ -38,9 +38,11 @@ TEST(SpscQueueTestSuite, SingleProcess)
 
 TEST(SpscQueueTestSuite, TwoProcesses)
 {
-    constexpr size_t CAPACITY = 1000;
+    constexpr size_t CAPACITY = 1024*1024*100;
 
     uint32_t producerPid = getpid();
+    SpscQueue queue(producerPid, SpscQueue::Role::Producer, CAPACITY, "");
+
     pid_t pid = fork();
     if (pid == -1)
     {
@@ -48,7 +50,6 @@ TEST(SpscQueueTestSuite, TwoProcesses)
     }
     else if (pid == 0)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Wait for producer to start
         SpscQueue queue(producerPid, SpscQueue::Role::Consumer, CAPACITY, "");
 
         int received = 0;
@@ -60,22 +61,15 @@ TEST(SpscQueueTestSuite, TwoProcesses)
                 EXPECT_EQ(item, received);
                 received++;
             }
-            else
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
         }
         exit(0);
     }
     else
     {
-        SpscQueue queue(producerPid, SpscQueue::Role::Producer, CAPACITY, "");
-
         for (int i = 0; i < CAPACITY; i++)
         {
             while (!queue.Enqueue(i))
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
 

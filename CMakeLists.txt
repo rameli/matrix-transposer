@@ -61,26 +61,6 @@ target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation mem
 target_compile_options(transpose_server PRIVATE $<$<CONFIG:Debug>:-g>)
 target_compile_options(transpose_client PRIVATE $<$<CONFIG:Debug>:-g>)
 
-
-# ################################################
-set(A_SOURCES tests/a.cpp)
-set(B_SOURCES tests/b.cpp)
-
-add_executable(a ${A_SOURCES})
-add_executable(b ${B_SOURCES})
-
-target_include_directories(a PUBLIC lib)
-target_include_directories(b PUBLIC lib)
-
-target_link_libraries(a PUBLIC futex matrix-buf shared-mem unix-socks spsc-queue mem-utils)
-target_link_libraries(b PUBLIC futex matrix-buf shared-mem unix-socks spsc-queue mem-utils)
-
-# # # Add debug information flags
-# # target_compile_options(a PRIVATE $<$<CONFIG:Debug>:-g>)
-# # target_compile_options(b PRIVATE $<$<CONFIG:Debug>:-g>)
-
-# ################################################
-
 # -------------------------------------------------------
 # Add GoogleTest for testing
 # -------------------------------------------------------
