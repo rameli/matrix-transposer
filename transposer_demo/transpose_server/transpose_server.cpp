@@ -38,22 +38,18 @@ ServerWorkspace gWorkspace;
 
 static bool ClientExists(uint32_t clientId)
 {
-    shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
     return gWorkspace.clientBank.contains(clientId);
 }
 
 static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, const UnixSockIpcContext& context)
 {
+    if (gWorkspace.clientBank.size() >= MAX_CLIENTS)
     {
-        unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
-
-        if (gWorkspace.clientBank.size() >= MAX_CLIENTS)
-        {
-            return false;
-        }
-
-        gWorkspace.clientBank[clientId] = ClientContext();
+        return false;
     }
+
+    gWorkspace.clientBank[clientId] = ClientContext();
+
     ClientContext& newClientContext = gWorkspace.clientBank[clientId];
 
     try
@@ -91,7 +87,6 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
 
 static void RemoveClient(uint32_t clientId)
 {
-    unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
     gWorkspace.clientBank.erase(clientId);
 }
 
@@ -110,16 +105,20 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
             return;
         }
 
-        if (ClientExists(clientId))
         {
-            std::cout << "Client PID: " << clientId << " already exists" << std::endl;
-            return;
-        }
+            unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
 
-        if (!AddClient(clientId, m, n, k, context))
-        {
-            std::cout << "Failed to add client PID: " << clientId << std::endl;
-            return;
+            if (ClientExists(clientId))
+            {
+                std::cout << "Client PID: " << clientId << " already exists" << std::endl;
+                return;
+            }
+
+            if (!AddClient(clientId, m, n, k, context))
+            {
+                std::cout << "Failed to add client PID: " << clientId << std::endl;
+                return;
+            }
         }
 
         ClientServerMessage responseMessage;
@@ -137,13 +136,18 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
             return;
         }
 
-        if (!ClientExists(clientId))
-        {
-            std::cout << "Cannot remove client PID: " << clientId << ". Does not exist" << std::endl;
-            return;
-        }
 
-        RemoveClient(clientId);
+        {
+            unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
+
+            if (!ClientExists(clientId))
+            {
+                std::cout << "Cannot remove client PID: " << clientId << ". Does not exist" << std::endl;
+                return;
+            }
+
+            RemoveClient(clientId);
+        }
 
         // std::cout << ClientServerMessage::ToString(message) << std::endl;
         break;
@@ -152,6 +156,7 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
         std::cout << "Received unknown message type from client PID: " << message.senderId << std::endl;
         break;
     }
+
 }
 
 static void DisplayServerStats()
@@ -200,12 +205,11 @@ static void WorkloadDispatcher()
         shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
         for (auto& [clientId, clientContext] : gWorkspace.clientBank)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
+            // std::this_thread::sleep_for(std::chrono::milliseconds(100));
             uint32_t request;
             if (clientContext.pRequestQueue->Dequeue(request))
             {
-                std::cerr << "Client PID: " << clientId << " Request: " << request << std::endl;
+                std::cerr << "Client PID: " << clientContext.id << " Request: " << request << std::endl;
                 clientContext.stats.totalRequests++;
                 if (clientContext.pTransposeReadyFutex->IsWaiting())
                 {

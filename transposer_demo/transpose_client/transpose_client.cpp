@@ -95,10 +95,11 @@ int main(int argc, char* argv[])
 
     for (int i = 0; i < 10; i++)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::cout << "Req " << i;
+        // std::this_thread::sleep_for(std::chrono::milliseconds(10));
         gWorkspace.pRequestQueue->Enqueue(gWorkspace.clientPid);
         gWorkspace.pTransposeReadyFutex->Wait();
-        std::cout << "Transpose operation completed: " << i << std::endl;
+        std::cout << " ... completed: " << std::endl;
     }
 
     ClientServerMessage unsubscribeMessage;
@@ -106,7 +107,7 @@ int main(int argc, char* argv[])
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 
-    // std::cin.get();
+    std::cin.get();
     gWorkspace.pIpcClient->Send(unsubscribeMessage);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
