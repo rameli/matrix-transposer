@@ -161,6 +161,10 @@ TEST_P(TileMultiThreadedTest, TileMultiThreaded)
     TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
 
     EXPECT_TRUE(MatricesAreEqual(transposeRes, refTranspose, columnCount, rowCount));
+
+    delete[] originalMat;
+    delete[] transposeRes;
+    delete[] refTranspose;
 }
 
 INSTANTIATE_TEST_SUITE_P(
