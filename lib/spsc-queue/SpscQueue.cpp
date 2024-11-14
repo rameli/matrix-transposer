@@ -105,7 +105,7 @@ std::string SpscQueue::CreateFutexObjectName(uint32_t ownerPid, const std::strin
 
 size_t SpscQueue::CalculateBufferSize()
 {
-    size_t cacheLineSize = MemoryUtils::getCacheLineSize();
+    size_t cacheLineSize = MemoryUtils::GetCacheLineSize();
     if (cacheLineSize == 0)
     {
         cacheLineSize = 64; // At least one full cache line of size 64 bytes

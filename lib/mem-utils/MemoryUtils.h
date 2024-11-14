@@ -9,7 +9,7 @@
 class MemoryUtils {
 public:
     // Function to get the cache line size
-    static std::size_t getCacheLineSize() {
+    static std::size_t GetCacheLineSize() {
         std::size_t lineSize = 0;
 #ifdef __linux__
         std::ifstream cacheInfo("/sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size");
@@ -22,27 +22,27 @@ public:
     }
 
     // Function to get the L1 data cache size
-    static std::size_t getL1DataCacheSize() {
+    static std::size_t GetL1DataCacheSize() {
         return getCacheSize(1, "data");
     }
 
     // Function to get the L1 instruction cache size
-    static std::size_t getL1InstructionCacheSize() {
+    static std::size_t GetL1InstructionCacheSize() {
         return getCacheSize(1, "instruction");
     }
 
     // Function to get the L2 cache size
-    static std::size_t getL2CacheSize() {
+    static std::size_t GetL2CacheSize() {
         return getCacheSize(2, "unified");
     }
 
     // Function to get the L3 cache size
-    static std::size_t getL3CacheSize() {
+    static std::size_t GetL3CacheSize() {
         return getCacheSize(3, "unified");
     }
 
     // Function to get total system memory
-    static std::size_t getTotalMemory() {
+    static std::size_t GetTotalMemory() {
         struct sysinfo info;
         if (sysinfo(&info) == 0) {
             return info.totalram * info.mem_unit;
@@ -51,7 +51,7 @@ public:
     }
 
     // Function to get used memory
-    static std::size_t getUsedMemory() {
+    static std::size_t GetUsedMemory() {
         struct sysinfo info;
         if (sysinfo(&info) == 0) {
             return (info.totalram - info.freeram) * info.mem_unit;
@@ -60,7 +60,7 @@ public:
     }
 
     // Function to get free memory
-    static std::size_t getFreeMemory() {
+    static std::size_t GetFreeMemory() {
         struct sysinfo info;
         if (sysinfo(&info) == 0) {
             return info.freeram * info.mem_unit;

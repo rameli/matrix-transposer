@@ -28,7 +28,7 @@ static bool ShmObjectExists(uint32_t uniqueId, size_t k)
 }
 
 static std::vector<size_t> gRowCountExponents = { 4, 5, 6};
-static std::vector<size_t> gColumnCountExponents = {4, 5, 6};
+static std::vector<size_t> gColumnCountExponents = { 4, 5, 6};
 
 TEST(MatrixBufferTestSuite, CorrectInit)
 {
@@ -118,7 +118,7 @@ TEST(MatrixBufferTestSuite, AccessSharedBuffer)
     }
 }
 
-TEST(MatrixBufferTestSuite, SimultaneousAccess)
+TEST(MatrixBufferTestSuite, SimultaneousAccessSingleThread)
 {
     std::random_device rd;
     std::mt19937_64 gen(rd());

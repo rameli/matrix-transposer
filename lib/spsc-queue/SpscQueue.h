@@ -8,7 +8,8 @@
 #include "SharedMemory.h"
 #include "FutexSignaller.h"
 
-class SpscQueue {
+class SpscQueue
+{
 public:
     enum class Role
     {
@@ -25,7 +26,8 @@ public:
     bool Deque(uint32_t& item);
 
 private:
-    struct QueueData {
+    struct QueueData
+    {
         alignas(64) std::atomic<size_t> head;
         alignas(64) std::atomic<size_t> tail;
         alignas(64) uint32_t buffer[];

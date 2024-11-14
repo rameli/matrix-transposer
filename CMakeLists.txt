@@ -68,13 +68,14 @@ enable_testing()
 set(TEST_SOURCES
     tests/test_FutexSignaller.cpp
     tests/test_SharedMatrixBuffer.cpp
-    # tests/test_UnixSockets.cpp
+    tests/test_SpscQueue.cpp
+    tests/test_MemoryUtils.cpp
 )
 
 add_executable(run_tests ${TEST_SOURCES})
 
 target_include_directories(run_tests PUBLIC lib)
-target_link_libraries(run_tests PRIVATE gtest gtest_main futex matrix-buf shared-mem unix-socks)
+target_link_libraries(run_tests PRIVATE gtest gtest_main futex matrix-buf shared-mem unix-socks spsc-queue mem-utils)
 
 # Automatically discover tests
 include(GoogleTest)

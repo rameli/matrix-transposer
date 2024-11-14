@@ -26,7 +26,7 @@ FutexSignaller::FutexSignaller(uint32_t ownerPid, Role role, const std::string& 
     SharedMemory::Ownership ownership = (role == Role::Waiter) ? SharedMemory::Ownership::Owner : SharedMemory::Ownership::Borrower;
     SharedMemory::BufferInitMode bufferInitMode = role == Role::Waiter ? SharedMemory::BufferInitMode::Zero : SharedMemory::BufferInitMode::NoInit;
     string shmObjectName = CreateShmObjectName(m_OwnerPid, nameSuffix);
-    size_t bufferSizeInBytes = MemoryUtils::getCacheLineSize();
+    size_t bufferSizeInBytes = MemoryUtils::GetCacheLineSize();
     if (bufferSizeInBytes == 0)
     {
         bufferSizeInBytes = 64; // At least one full cache line of size 64 bytes
