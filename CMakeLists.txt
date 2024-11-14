@@ -1,5 +1,4 @@
-# Set the minimum required version of CMake
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.2)
 
 # Set the project name
 project(matrix_transposer)
@@ -83,3 +82,26 @@ target_link_libraries(run_tests PRIVATE gtest gtest_main futex matrix-buf shared
 # Automatically discover tests
 include(GoogleTest)
 gtest_discover_tests(run_tests)
+
+# -------------------------------------------------------
+# Add Google Benchmark for benchmarking
+# -------------------------------------------------------
+
+include(FetchContent)
+set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
+
+set(BENCHMARK_SOURCES
+    benchmarks/benchmark_SpscQueue.cpp
+)
+
+add_executable(run_benchmarks ${BENCHMARK_SOURCES})
+
+target_include_directories(run_benchmarks PUBLIC lib)
+target_link_libraries(run_benchmarks PRIVATE benchmark::benchmark futex matrix-buf shared-mem unix-socks spsc-queue mem-utils)
+
+FetchContent_Declare(
+    benchmark
+    GIT_REPOSITORY https://github.com/google/benchmark.git
+    GIT_TAG v1.9.0
+)
+FetchContent_MakeAvailable(benchmark)
