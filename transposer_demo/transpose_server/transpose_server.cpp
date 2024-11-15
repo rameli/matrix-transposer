@@ -175,7 +175,7 @@ static void DisplayServerStats()
 
         tableFooter << "Press ENTER to stop the server...";
 
-        Table table(tableHeader.str(), {"Client PID", "M", "N", "K", "Req. Count"}, MAX_CLIENTS, tableFooter.str());
+        Table table(tableHeader.str(), {"Client PID", "M", "N", "K", "Req. Count", "Avg. Processing (us)"}, MAX_CLIENTS, tableFooter.str());
 
         system("clear");
         table.clear();
@@ -188,7 +188,9 @@ static void DisplayServerStats()
                             std::to_string(clientContext.second.matrixSize.m),
                             std::to_string(clientContext.second.matrixSize.n),
                             std::to_string(clientContext.second.matrixSize.k),
-                            std::to_string(clientContext.second.stats.totalRequests)});
+                            std::to_string(clientContext.second.stats.GetTotalRequests()),
+                            std::to_string(clientContext.second.stats.GetAverageElapsedTimeUs())
+                            });
             }
         }
 
@@ -215,16 +217,16 @@ static void WorkloadDispatcher()
                 uint64_t* transposeRes = clientContext.matrixBuffersTr[bufferIndex]->GetRawPointer();
                 uint32_t rowCount = clientContext.matrixSize.numRows;
                 uint32_t columnCount = clientContext.matrixSize.numColumns;
-                std::cerr << "Transposing matrix for client PID: " << clientId << ". Buffer index: " << bufferIndex << std::endl;
-                TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
+                // std::cerr << "Transposing matrix for client PID: " << clientId << ". Buffer index: " << bufferIndex << std::endl;
 
-                transposeRes[0] = 555;
-                
+                clientContext.stats.StartTimer();
+                TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
+                clientContext.stats.StopTimer();
+
                 if (clientContext.pTransposeReadyFutex->IsWaiting())
                 {
                     clientContext.pTransposeReadyFutex->Wake();
                 }
-                clientContext.stats.totalRequests++;
             }
         }
     }

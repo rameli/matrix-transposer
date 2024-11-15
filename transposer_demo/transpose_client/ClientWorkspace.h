@@ -15,6 +15,7 @@
 
 struct ClientWorkspace
 {
+    uint32_t requestRepetitions;
     uint32_t clientPid;
     BufferDimensions buffers;
     ClientStats stats;

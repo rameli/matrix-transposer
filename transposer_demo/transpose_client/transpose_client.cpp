@@ -30,11 +30,11 @@ using MatrixTransposer::Constants::TR_GOLDEN_MATRIX_BUF_NAME_SUFFIX;
 ClientWorkspace gWorkspace;
 
 
-static bool ProcessArguments(int argc, char* argv[], uint32_t &m, uint32_t &n, uint32_t &k)
+static bool ProcessArguments(int argc, char* argv[], uint32_t &m, uint32_t &n, uint32_t &k, uint32_t &requestRepetitions)
  {
-    if (argc != 4 && argc != 1)
+    if (argc != 5 && argc != 1)
     {
-        std::cerr << "Usage: " << argv[0] << " <m> <n> <k>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <m> <n> <k> <repetitions>" << std::endl;
         return false;
     }
 
@@ -43,12 +43,14 @@ static bool ProcessArguments(int argc, char* argv[], uint32_t &m, uint32_t &n, u
         m = 4;
         n = 4;
         k = 8;
+        requestRepetitions = 1;
         return true;
     }
 
     m = std::atoi(argv[1]);
     n = std::atoi(argv[2]);
     k = std::atoi(argv[3]);
+    requestRepetitions = std::atoi(argv[4]);
     return true;
 }
 
@@ -60,7 +62,7 @@ static void MessageHandler(const ClientServerMessage& message)
 
 int main(int argc, char* argv[])
 {
-    if (!ProcessArguments(argc, argv, gWorkspace.buffers.m, gWorkspace.buffers.n, gWorkspace.buffers.k))
+    if (!ProcessArguments(argc, argv, gWorkspace.buffers.m, gWorkspace.buffers.n, gWorkspace.buffers.k, gWorkspace.requestRepetitions))
     {
         return 1;
     }
@@ -99,13 +101,13 @@ int main(int argc, char* argv[])
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
+    for (uint32_t repetition = 0; repetition < gWorkspace.requestRepetitions; repetition++)
     {
-        // std::cout << "Matrix transpose for buffer " << bufferIndex << " requested ... ";
-        // std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        gWorkspace.pRequestQueue->Enqueue(bufferIndex);
-        gWorkspace.pTransposeReadyFutex->Wait();
-        // std::cout << "completed." << std::endl;
+        for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
+        {
+            gWorkspace.pRequestQueue->Enqueue(bufferIndex);
+            gWorkspace.pTransposeReadyFutex->Wait();
+        }
     }
 
     ClientServerMessage unsubscribeMessage;

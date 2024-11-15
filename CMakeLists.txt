@@ -20,6 +20,7 @@ add_library(shared-mem SHARED lib/shared-mem/SharedMemory.cpp)
 add_library(mem-utils INTERFACE)
 add_library(unix-socks INTERFACE)
 add_library(spsc-queue SHARED lib/spsc-queue/SpscQueue.cpp)
+add_library(stats INTERFACE)
 add_library(mat-transpose SHARED
     lib/mat-transpose/TransposeNaive.cpp
     lib/mat-transpose/TransposeNaiveInPlace.cpp
@@ -34,6 +35,7 @@ target_include_directories(futex PUBLIC lib/futex lib/mem-utils lib/shared-mem)
 target_include_directories(matrix-buf PUBLIC lib/shared-mem)
 target_include_directories(presentation INTERFACE lib/presentation)
 target_include_directories(mem-utils INTERFACE lib/mem-utils)
+target_include_directories(stats INTERFACE lib/stats)
 target_include_directories(shared-mem PUBLIC lib/shared-mem)
 target_include_directories(unix-socks INTERFACE lib/unix-socks)
 target_include_directories(spsc-queue PUBLIC lib/mem-utils lib/shared-mem lib/futex)
@@ -61,8 +63,8 @@ add_executable(transpose_client ${CLIENT_SOURCES})
 target_include_directories(transpose_server PUBLIC lib transposer_demo/common)
 target_include_directories(transpose_client PUBLIC lib transposer_demo/common)
 
-target_link_libraries(transpose_server PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue mat-transpose)
-target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue mat-transpose)
+target_link_libraries(transpose_server PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue mat-transpose stats)
+target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue mat-transpose stats)
 
 # Add debug information flags for Debug builds
 target_compile_options(transpose_server PRIVATE $<$<CONFIG:Debug>:-g>)
