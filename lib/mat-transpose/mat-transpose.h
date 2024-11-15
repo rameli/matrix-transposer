@@ -2,10 +2,13 @@
 
 #include <cstdint>
 
-void TransposeNaive(uint64_t* src, uint64_t* dst, int M, int N);
-void TransposeTiledMultiThreaded(uint64_t* src, uint64_t* dst, int M, int N, int B, int num_threads);
-void TransposeRecursive(uint64_t* src, uint64_t* dst, int M, int N);
-void TransposeNaiveInPlace(uint64_t* matrix, int N);
-void TransposeNaiveInPlaceMultiThreaded(uint64_t* matrix, int N, int B, int num_threads);
-void TransposeRecursiveInPlace(uint64_t* matrix, int N);
-bool MatricesAreEqual(uint64_t* A, uint64_t* B, int rows, int cols);
+void TransposeNaive(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount);
+void TransposeNaiveInPlace(uint64_t* matrix, uint32_t rowCount);
+void TransposeTiledMultiThreaded(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount, uint32_t tileSize, uint32_t numThreads);
+
+void TransposeTiledInPlaceMultiThreaded(uint64_t* matrix, uint32_t rowCount, uint32_t tileSize, uint32_t numThreads);
+
+void TransposeRecursive(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount);
+void TransposeRecursiveInPlace(uint64_t* matrix, uint32_t rowCount);
+
+bool MatricesAreEqual(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount);
