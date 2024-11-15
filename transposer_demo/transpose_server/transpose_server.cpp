@@ -149,6 +149,14 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
                 return;
             }
 
+            ClientContext& clientContext = gWorkspace.clientBank[clientId];
+            std::clog << "client: " << clientContext.id 
+                    << ", m: "<< clientContext.matrixSize.m
+                    << ", n: " << clientContext.matrixSize.n 
+                    << ", k: " << clientContext.matrixSize.k
+                    << ", totalReqs: " << clientContext.stats.GetTotalRequests()
+                    << ", avgTime: " << clientContext.stats.GetAverageElapsedTimeUs() << " (us)" << std::endl;
+
             RemoveClient(clientId);
         }
 

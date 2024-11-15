@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
     std::clog << "client: " << gWorkspace.clientPid 
               << ", m: "<< gWorkspace.buffers.m 
               << ", n: " << gWorkspace.buffers.n 
-              << ", k" << gWorkspace.buffers.k
+              << ", k: " << gWorkspace.buffers.k
               << "reps: " << gWorkspace.requestRepetitions
               << ", totalReqs: " << gWorkspace.requestRepetitions * gWorkspace.buffers.k
               << ", avgTime: " << gWorkspace.stats.GetAverageElapsedTimeUs() << " (us)" << std::endl;
