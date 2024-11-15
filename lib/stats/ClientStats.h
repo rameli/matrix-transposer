@@ -35,7 +35,7 @@ public:
         return m_TotalElapsedTimeUs / m_TotalRequests;
     }
 
-private:
+// private:
     TimePoint startTime;
     TimePoint endTime;
     uint64_t m_TotalElapsedTimeUs { 0 };

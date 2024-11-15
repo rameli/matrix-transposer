@@ -102,16 +102,18 @@ int main(int argc, char* argv[])
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
+
+    gWorkspace.stats.StartTimer();
     for (uint32_t repetition = 0; repetition < gWorkspace.requestRepetitions; repetition++)
     {
         for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
         {
-            gWorkspace.stats.StartTimer();
             gWorkspace.pRequestQueue->Enqueue(bufferIndex);
             gWorkspace.pTransposeReadyFutex->Wait();
-            gWorkspace.stats.StopTimer();
         }
     }
+    gWorkspace.stats.StopTimer();
+    gWorkspace.stats.m_TotalRequests = gWorkspace.requestRepetitions * gWorkspace.buffers.k;
 
     ClientServerMessage unsubscribeMessage;
     ClientServerMessage::GenerateUnsubscribeMessage(unsubscribeMessage, gWorkspace.clientPid);
