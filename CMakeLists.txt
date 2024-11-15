@@ -19,10 +19,18 @@ add_library(futex SHARED lib/futex/FutexSignaller.cpp)
 add_library(matrix-buf SHARED lib/matrix-buf/SharedMatrixBuffer.cpp)
 add_library(presentation INTERFACE)
 add_library(shared-mem SHARED lib/shared-mem/SharedMemory.cpp)
-add_library(mat-transpose SHARED lib/mat-transpose/mat-transpose.cpp)
 add_library(mem-utils INTERFACE)
 add_library(unix-socks INTERFACE)
 add_library(spsc-queue SHARED lib/spsc-queue/SpscQueue.cpp)
+add_library(mat-transpose SHARED
+    lib/mat-transpose/TransposeNaive.cpp
+    lib/mat-transpose/TransposeNaiveInPlace.cpp
+    lib/mat-transpose/TransposeTiledMultiThreaded.cpp
+    lib/mat-transpose/TransposeTiledInPlaceMultiThreaded.cpp
+    lib/mat-transpose/TransposeRecursive.cpp
+    lib/mat-transpose/TransposeRecursiveInPlace.cpp
+    lib/mat-transpose/MatricesAreEqual.cpp
+)
 
 target_include_directories(futex PUBLIC lib/futex lib/mem-utils lib/shared-mem)
 target_include_directories(matrix-buf PUBLIC lib/shared-mem)
