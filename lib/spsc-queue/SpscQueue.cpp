@@ -69,7 +69,8 @@ bool SpscQueue::Dequeue(uint32_t& item)
 {
     size_t tail = mp_QueueData->tail.load(std::memory_order_relaxed);
 
-    if (tail == mp_QueueData->head.load(std::memory_order_acquire)) {
+    if (tail == mp_QueueData->head.load(std::memory_order_acquire))
+    {
         return false;
     }
 

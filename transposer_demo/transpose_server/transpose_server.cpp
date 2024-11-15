@@ -215,7 +215,7 @@ static void WorkloadDispatcher()
 {
     while (gWorkspace.running)
     {
-        // shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
+        shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
         for (auto& [clientId, clientContext] : gWorkspace.clientBank)
         {
             uint32_t bufferIndex;
@@ -231,10 +231,7 @@ static void WorkloadDispatcher()
                 TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
                 clientContext.stats.StopTimer();
 
-                if (clientContext.pTransposeReadyFutex->IsWaiting())
-                {
-                    clientContext.pTransposeReadyFutex->Wake();
-                }
+                clientContext.pTransposeReadyFutex->Wake();
             }
         }
     }
