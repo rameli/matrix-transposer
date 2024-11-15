@@ -49,7 +49,7 @@ static void BM_TransposeTiledMultiThreaded(benchmark::State& state)
 BENCHMARK(BM_TransposeTiledMultiThreaded)
     ->Setup(DoSetup)
     ->Teardown(DoTeardown)
-    ->ArgsProduct({{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14},
+    ->ArgsProduct({{4, 5, 6, 7, 8, 9, 10},
                    {14},
                    {32},
                    {8}})
