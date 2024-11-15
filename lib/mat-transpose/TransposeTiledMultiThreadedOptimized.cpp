@@ -1,6 +1,10 @@
 #include <cstdint>
 #include <thread>
 #include <vector>
+#include <atomic>
+#include <mutex>
+#include <memory>
+#include <condition_variable>
 
 struct Block
 {
@@ -16,8 +20,18 @@ static uint32_t gRowCount;
 static uint32_t gColCount;
 std::vector<std::thread> gThreads;
 
+std::atomic<bool> gGoFlag = false;
+std::mutex gMutex;
+std::condition_variable gCondVar;
+
 static void workerThread(uint32_t t)
 {
+    //while (!gGoFlag.load(std::memory_order_relaxed));
+    {
+        std::unique_lock<std::mutex> lock(gMutex);
+        gCondVar.wait(lock, [] { return gGoFlag.load(); });
+    }
+    
     for (size_t idx = t; idx < gBlocks.size(); idx += gNumThreads)
     {
         Block& block = gBlocks[idx];
@@ -31,8 +45,9 @@ static void workerThread(uint32_t t)
     }
 }
 
-static void setup(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount, uint32_t tileSize, uint32_t numThreads)
+void TransposeTiledMultiThreadedOptimized_setup(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount, uint32_t tileSize, uint32_t numThreads)
 {
+
     uint32_t numBlocksInRow = (rowCount + tileSize - 1) / tileSize;
     uint32_t numBlocksInCol = (colCount + tileSize - 1) / tileSize;
 
@@ -59,24 +74,43 @@ static void setup(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colC
         }
     }
 
-}
-
-static void teardown()
-{
-    
-}
-
-void TransposeTiledMultiThreadedOptimized(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount, uint32_t tileSize, uint32_t numThreads)
-{
-    setup(src, dst, rowCount, colCount, tileSize, numThreads);
+    {
+        std::unique_lock<std::mutex> lock(gMutex);
+        gGoFlag = false;
+    }
 
     for (uint32_t t = 0; t < numThreads; t++)
     {
         gThreads[t] = std::thread(workerThread, t);
     }
 
+}
+
+void TransposeTiledMultiThreadedOptimized(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount, uint32_t tileSize, uint32_t numThreads)
+{
+    {
+        std::unique_lock<std::mutex> lock(gMutex);
+        gGoFlag.store(true, std::memory_order_release);  // Set the go flag
+    }
+    gCondVar.notify_all();  // Notify all worker threads to start processing
+
+    // Check and join each thread if it's joinable
     for (auto& th : gThreads)
     {
-        th.join();
+        if (th.joinable())  // Make sure the thread is joinable before joining
+        {
+            th.join();
+        }
     }
+
+    gGoFlag.store(false, std::memory_order_release);  // Reset the go flag
+}
+
+
+void TransposeTiledMultiThreadedOptimized_teardown()
+{
+
+    gThreads.clear();
+
+    gGoFlag = false;
 }

@@ -29,24 +29,33 @@ static void DoSetup(const benchmark::State& state)
     {
         originalMat[i] = i;
     }
+
+    TransposeTiledMultiThreadedOptimized_setup(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
+
 }
 
 static void DoTeardown(const benchmark::State& state)
 {
+    TransposeTiledMultiThreadedOptimized_teardown();
+
     delete[] originalMat;
     delete[] transposeRes;
 }
 
-static void BM_TransposeTiledMultiThreaded(benchmark::State& state)
+static void BM_TransposeTiledMultiThreadedOptimized(benchmark::State& state)
 {
+    static int xx = 0;
+
     for (auto _ : state)
     {
-        TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
+        TransposeTiledMultiThreadedOptimized(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
     }
+
+    xx++;
 }
 
 // Set up the benchmark ranges and add names for each argument
-BENCHMARK(BM_TransposeTiledMultiThreaded)
+BENCHMARK(BM_TransposeTiledMultiThreadedOptimized)
     ->Setup(DoSetup)
     ->Teardown(DoTeardown)
     ->ArgsProduct({{14},
@@ -56,4 +65,4 @@ BENCHMARK(BM_TransposeTiledMultiThreaded)
     ->ArgNames({"m", "n", "tileSize", "numThreads"})
     ->Unit(benchmark::kMicrosecond);
 
-// BENCHMARK_MAIN();
+BENCHMARK_MAIN();

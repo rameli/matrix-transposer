@@ -7,7 +7,7 @@ project(matrix_transposer)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Set the build type to Release by default
+# set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_BUILD_TYPE Debug)
 
 # -------------------------------------------------------
@@ -38,6 +38,7 @@ target_include_directories(mem-utils INTERFACE lib/mem-utils)
 target_include_directories(shared-mem PUBLIC lib/shared-mem)
 target_include_directories(unix-socks INTERFACE lib/unix-socks)
 target_include_directories(spsc-queue PUBLIC lib/mem-utils lib/shared-mem lib/futex)
+target_include_directories(mat-transpose PUBLIC lib/mem-utils lib/shared-mem lib/futex)
 
 target_link_libraries(spsc-queue PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks)
 
@@ -108,6 +109,7 @@ set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
 
 set(BENCHMARK_SOURCES
     benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreaded.cpp
+    benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreadedOptimized.cpp
 )
 
 add_executable(run_benchmarks ${BENCHMARK_SOURCES})

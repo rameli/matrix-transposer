@@ -87,7 +87,7 @@ void FutexSignaller::Wake()
     if (m_RawPointer->compare_exchange_strong(expected, 1))
     {
         // Wake up one waiting thread if any.
-        int res = syscall(SYS_futex, m_RawPointer, FUTEX_WAKE, 1, nullptr, nullptr, 0);
+        int res = syscall(SYS_futex, m_RawPointer, FUTEX_WAKE, INT_MAX, nullptr, nullptr, 0);
         if (res == -1)
         {
             std::cout << "FUTEX_WAKE error(" << errno << "): " << strerror(errno) << std::endl;
