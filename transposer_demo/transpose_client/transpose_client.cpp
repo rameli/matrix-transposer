@@ -113,18 +113,18 @@ int main(int argc, char* argv[])
 
     gWorkspace.pIpcClient->Send(unsubscribeMessage);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
     for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
     {
         TransposeNaive(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n);
 
         if (!MatricesAreEqual(gWorkspace.matrixBuffersTr[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n))
         {
-            std::cerr << "Transpose mismatch for buffer " << bufferIndex << std::endl;
+            std::cout << "Client " << gWorkspace.clientPid << ": ERROR in buffer " << bufferIndex << std::endl;
             exit(1);
         }
     }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     return 0;
 }

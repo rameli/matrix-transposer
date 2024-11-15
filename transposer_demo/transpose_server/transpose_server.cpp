@@ -217,6 +217,8 @@ static void WorkloadDispatcher()
                 uint32_t columnCount = clientContext.matrixSize.numColumns;
                 std::cerr << "Transposing matrix for client PID: " << clientId << ". Buffer index: " << bufferIndex << std::endl;
                 TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
+
+                transposeRes[0] = 555;
                 
                 if (clientContext.pTransposeReadyFutex->IsWaiting())
                 {
