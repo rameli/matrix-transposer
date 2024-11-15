@@ -54,7 +54,7 @@ SpscQueue::~SpscQueue()
 bool SpscQueue::Enqueue(uint32_t item)
 {
     size_t head = mp_QueueData->head.load(std::memory_order_relaxed);
-    size_t nextHead = (head + 1) % m_Capacity;
+    size_t nextHead = (head + 1) % m_Capacity; // FIX_THIS: use bit shifts for power of 2 capacity
 
     if (nextHead == mp_QueueData->tail.load(std::memory_order_acquire)) {
         return false;
