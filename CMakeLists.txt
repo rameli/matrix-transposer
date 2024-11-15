@@ -26,6 +26,7 @@ add_library(mat-transpose SHARED
     lib/mat-transpose/TransposeNaive.cpp
     lib/mat-transpose/TransposeNaiveInPlace.cpp
     lib/mat-transpose/TransposeTiledMultiThreaded.cpp
+    lib/mat-transpose/TransposeTiledMultiThreadedOptimized.cpp
     lib/mat-transpose/TransposeTiledInPlaceMultiThreaded.cpp
     lib/mat-transpose/TransposeRecursive.cpp
     lib/mat-transpose/TransposeRecursiveInPlace.cpp
