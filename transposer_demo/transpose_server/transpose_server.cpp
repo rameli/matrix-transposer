@@ -239,7 +239,7 @@ static void WorkloadDispatcher()
 
 int main(int argc, char* argv[])
 {
-    gWorkspace.numWorkerThreads = 8;
+    gWorkspace.numWorkerThreads = std::thread::hardware_concurrency();
 
     if (argc > 1)
     {

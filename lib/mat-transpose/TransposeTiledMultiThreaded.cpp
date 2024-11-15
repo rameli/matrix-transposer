@@ -4,15 +4,16 @@
 
 struct Block
 {
-    uint32_t i_start, i_end;
-    uint32_t j_start, j_end;
+    uint32_t iStart, iEnd;
+    uint32_t jStart, jEnd;
 };
 
 void TransposeTiledMultiThreaded(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount, uint32_t tileSize, uint32_t numThreads)
 {
     uint32_t numBlocksInRow = (rowCount + tileSize - 1) / tileSize;
     uint32_t numBlocksInCol = (colCount + tileSize - 1) / tileSize;
-    std::vector<Block> blocks;
+    
+    std::vector<Block> blocks(numBlocksInRow * numBlocksInCol);
 
     for (uint32_t bi = 0; bi < numBlocksInRow; bi++)
     {
@@ -26,15 +27,6 @@ void TransposeTiledMultiThreaded(uint64_t* src, uint64_t* dst, uint32_t rowCount
         }
     }
 
-    if (numThreads <= 0)
-    {
-        numThreads = std::thread::hardware_concurrency();
-        if (numThreads == 0)
-        {
-            numThreads = 8;
-        }
-    }
-
     std::vector<std::thread> threads(numThreads);
 
     for (uint32_t t = 0; t < numThreads; t++)
@@ -44,9 +36,9 @@ void TransposeTiledMultiThreaded(uint64_t* src, uint64_t* dst, uint32_t rowCount
             for (size_t idx = t; idx < blocks.size(); idx += numThreads)
             {
                 Block& block = blocks[idx];
-                for (uint32_t i = block.i_start; i < block.i_end; i++)
+                for (uint32_t i = block.iStart; i < block.iEnd; i++)
                 {
-                    for (uint32_t j = block.j_start; j < block.j_end; j++)
+                    for (uint32_t j = block.jStart; j < block.jEnd; j++)
                     {
                         dst[j * rowCount + i] = src[i * colCount + j];
                     }

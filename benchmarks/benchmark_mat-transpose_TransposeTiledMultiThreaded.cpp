@@ -56,7 +56,7 @@ BENCHMARK(BM_TransposeTiledMultiThreaded)
     ->ArgsProduct({{10},
                    {10},
                    {32},
-                   {1, 2, 4, 8, 16}})
+                   {8}})
     ->ArgNames({"m", "n", "tileSize", "numThreads"})
     ->Unit(benchmark::kMicrosecond);
 
