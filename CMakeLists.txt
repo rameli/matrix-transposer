@@ -24,7 +24,6 @@ add_library(mat-transpose SHARED
     lib/mat-transpose/TransposeNaive.cpp
     lib/mat-transpose/TransposeNaiveInPlace.cpp
     lib/mat-transpose/TransposeTiledMultiThreaded.cpp
-    lib/mat-transpose/TransposeTiledMultiThreadedOptimized.cpp
     lib/mat-transpose/TransposeTiledInPlaceMultiThreaded.cpp
     lib/mat-transpose/TransposeRecursive.cpp
     lib/mat-transpose/TransposeRecursiveInPlace.cpp
@@ -62,7 +61,7 @@ add_executable(transpose_client ${CLIENT_SOURCES})
 target_include_directories(transpose_server PUBLIC lib transposer_demo/common)
 target_include_directories(transpose_client PUBLIC lib transposer_demo/common)
 
-target_link_libraries(transpose_server PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue)
+target_link_libraries(transpose_server PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue mat-transpose)
 target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue)
 
 # Add debug information flags for Debug builds
@@ -109,7 +108,6 @@ set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
 
 set(BENCHMARK_SOURCES
     benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreaded.cpp
-    benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreadedOptimized.cpp
 )
 
 add_executable(run_benchmarks ${BENCHMARK_SOURCES})

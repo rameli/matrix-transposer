@@ -13,6 +13,7 @@ using ClientBank = std::unordered_map<ClientId, ClientContext>;
 struct ServerWorkspace
 {
     bool running;
+    uint32_t numWorkerThreads;
     uint32_t serverPid;
     ClientBank clientBank;
     std::shared_mutex clientBankMutex;

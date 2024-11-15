@@ -14,7 +14,6 @@ void TransposeTiledMultiThreaded(uint64_t* src, uint64_t* dst, uint32_t rowCount
     uint32_t numBlocksInCol = (colCount + tileSize - 1) / tileSize;
     std::vector<Block> blocks;
 
-    // Prepare the list of blocks
     for (uint32_t bi = 0; bi < numBlocksInRow; bi++)
     {
         for (uint32_t bj = 0; bj < numBlocksInCol; bj++)

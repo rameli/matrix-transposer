@@ -18,7 +18,7 @@ using ClientId = uint32_t;
 struct ClientContext
 {
     ClientId id;
-    BufferDimensions buffers;
+    BufferDimensions matrixSize;
     ClientStats stats;
     UnixSockIpcContext ipcContext;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffers;

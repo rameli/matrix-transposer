@@ -19,6 +19,7 @@
 #include "Constants.h"
 #include "ClientContext.h"
 #include "ServerWorkspace.h"
+#include "mat-transpose/mat-transpose.h"
 
 using std::vector;
 using std::unique_ptr;
@@ -33,6 +34,7 @@ using MatrixTransposer::Constants::TR_MATRIX_BUF_NAME_SUFFIX;
 using MatrixTransposer::Constants::REQ_QUEUE_NAME_SUFFIX;
 using MatrixTransposer::Constants::REQ_QUEUE_CAPACITY;
 using MatrixTransposer::Constants::MAX_CLIENTS;
+using MatrixTransposer::Constants::TRANSPOSE_TILE_SIZE;
 
 ServerWorkspace gWorkspace;
 
@@ -55,9 +57,11 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
     try
     {
         newClientContext.id = clientId;
-        newClientContext.buffers.m = m;
-        newClientContext.buffers.n = n;
-        newClientContext.buffers.k = k;
+        newClientContext.matrixSize.m = m;
+        newClientContext.matrixSize.n = n;
+        newClientContext.matrixSize.k = k;
+        newClientContext.matrixSize.numRows = 1 << m;
+        newClientContext.matrixSize.numColumns = 1 << n;
         newClientContext.ipcContext = context;
         newClientContext.matrixBuffers.reserve(k);
         newClientContext.matrixBuffersTr.reserve(k);
@@ -181,9 +185,9 @@ static void DisplayServerStats()
             for (const auto& clientContext : gWorkspace.clientBank)
             {
                 table.addRow({std::to_string(clientContext.first),
-                            std::to_string(clientContext.second.buffers.m),
-                            std::to_string(clientContext.second.buffers.n),
-                            std::to_string(clientContext.second.buffers.k),
+                            std::to_string(clientContext.second.matrixSize.m),
+                            std::to_string(clientContext.second.matrixSize.n),
+                            std::to_string(clientContext.second.matrixSize.k),
                             std::to_string(clientContext.second.stats.totalRequests)});
             }
         }
@@ -204,14 +208,21 @@ static void WorkloadDispatcher()
         shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
         for (auto& [clientId, clientContext] : gWorkspace.clientBank)
         {
-            uint32_t request;
-            if (clientContext.pRequestQueue->Dequeue(request))
+            uint32_t bufferIndex;
+            if (clientContext.pRequestQueue->Dequeue(bufferIndex))
             {
-                clientContext.stats.totalRequests++;
+                uint64_t* originalMat = clientContext.matrixBuffers[bufferIndex]->GetRawPointer();
+                uint64_t* transposeRes = clientContext.matrixBuffersTr[bufferIndex]->GetRawPointer();
+                uint32_t rowCount = clientContext.matrixSize.numRows;
+                uint32_t columnCount = clientContext.matrixSize.numColumns;
+                
+                TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
+                
                 if (clientContext.pTransposeReadyFutex->IsWaiting())
                 {
                     clientContext.pTransposeReadyFutex->Wake();
                 }
+                clientContext.stats.totalRequests++;
             }
         }
     }
@@ -219,6 +230,13 @@ static void WorkloadDispatcher()
 
 int main(int argc, char* argv[])
 {
+    gWorkspace.numWorkerThreads = 8;
+
+    if (argc > 1)
+    {
+        gWorkspace.numWorkerThreads = std::atoi(argv[1]);
+    }
+
     gWorkspace.serverPid = getpid();
     gWorkspace.clientBank.reserve(MAX_CLIENTS);
     gWorkspace.running = true;

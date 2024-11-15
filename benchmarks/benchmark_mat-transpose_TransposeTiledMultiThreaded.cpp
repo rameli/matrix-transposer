@@ -13,7 +13,6 @@ static uint32_t numThreads;
 
 static void DoSetup(const benchmark::State& state)
 {
-    // Retrieve m, n, tileSize, and numThreads from the state ranges
     uint32_t m = state.range(0);
     uint32_t n = state.range(1);
     tileSize = state.range(2);
@@ -29,10 +28,15 @@ static void DoSetup(const benchmark::State& state)
     {
         originalMat[i] = i;
     }
+
+    // TransposeTiledMultiThreaded_setup(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
+
 }
 
 static void DoTeardown(const benchmark::State& state)
 {
+    // TransposeTiledMultiThreaded_teardown();
+
     delete[] originalMat;
     delete[] transposeRes;
 }
@@ -49,11 +53,11 @@ static void BM_TransposeTiledMultiThreaded(benchmark::State& state)
 BENCHMARK(BM_TransposeTiledMultiThreaded)
     ->Setup(DoSetup)
     ->Teardown(DoTeardown)
-    ->ArgsProduct({{14},
+    ->ArgsProduct({{10},
                    {10},
                    {32},
-                   {1, 4, 8}})
+                   {1, 2, 4, 8, 16}})
     ->ArgNames({"m", "n", "tileSize", "numThreads"})
     ->Unit(benchmark::kMicrosecond);
 
-// BENCHMARK_MAIN();
+BENCHMARK_MAIN();
