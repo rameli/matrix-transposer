@@ -25,6 +25,7 @@ using MatrixTransposer::Constants::MATRIX_BUF_NAME_SUFFIX;
 using MatrixTransposer::Constants::TR_MATRIX_BUF_NAME_SUFFIX;
 using MatrixTransposer::Constants::REQ_QUEUE_NAME_SUFFIX;
 using MatrixTransposer::Constants::REQ_QUEUE_CAPACITY;
+using MatrixTransposer::Constants::TR_GOLDEN_MATRIX_BUF_NAME_SUFFIX;
 
 ClientWorkspace gWorkspace;
 
@@ -80,6 +81,7 @@ int main(int argc, char* argv[])
         {
             gWorkspace.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Random, MATRIX_BUF_NAME_SUFFIX));
             gWorkspace.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Zero, TR_MATRIX_BUF_NAME_SUFFIX));
+            gWorkspace.matrixBuffersTrReference.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Zero, TR_GOLDEN_MATRIX_BUF_NAME_SUFFIX));
         }
     }
     catch(const std::exception& e)
@@ -115,7 +117,6 @@ int main(int argc, char* argv[])
 
     for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
     {
-        gWorkspace.matrixBuffersTrReference.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Zero, TR_MATRIX_BUF_NAME_SUFFIX));
         TransposeNaive(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n);
 
         if (!MatricesAreEqual(gWorkspace.matrixBuffersTr[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n))
