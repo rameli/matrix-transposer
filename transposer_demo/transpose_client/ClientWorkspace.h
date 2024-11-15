@@ -22,6 +22,7 @@ struct ClientWorkspace
     std::unique_ptr<UnixSockIpcClient<ClientServerMessage>> pIpcClient;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffers;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffersTr;
+    std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffersTrReference;
     std::unique_ptr<SpscQueue> pRequestQueue;
     std::unique_ptr<FutexSignaller> pTransposeReadyFutex;
 };

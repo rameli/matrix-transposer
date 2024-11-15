@@ -14,6 +14,8 @@
 #include "ClientServerMessage.h"
 #include "Constants.h"
 #include "ClientWorkspace.h"
+#include "mat-transpose/mat-transpose.h"
+
 
 using std::vector;
 using std::unique_ptr;
@@ -72,6 +74,8 @@ int main(int argc, char* argv[])
 
         gWorkspace.matrixBuffers.reserve(gWorkspace.buffers.k);
         gWorkspace.matrixBuffersTr.reserve(gWorkspace.buffers.k);
+        gWorkspace.matrixBuffersTrReference.reserve(gWorkspace.buffers.k);
+
         for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
         {
             gWorkspace.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Random, MATRIX_BUF_NAME_SUFFIX));
@@ -93,25 +97,33 @@ int main(int argc, char* argv[])
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    for (int i = 0; i < gWorkspace.buffers.k; i++)
+    for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
     {
-        // std::cout << "Req " << i;
+        // std::cout << "Matrix transpose for buffer " << bufferIndex << " requested ... ";
         // std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        gWorkspace.pRequestQueue->Enqueue(gWorkspace.clientPid);
+        gWorkspace.pRequestQueue->Enqueue(bufferIndex);
         gWorkspace.pTransposeReadyFutex->Wait();
-        // std::cout << " ... completed: " << std::endl;
+        // std::cout << "completed." << std::endl;
     }
 
     ClientServerMessage unsubscribeMessage;
     ClientServerMessage::GenerateUnsubscribeMessage(unsubscribeMessage, gWorkspace.clientPid);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-
-    // std::cin.get();
     gWorkspace.pIpcClient->Send(unsubscribeMessage);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
+    for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
+    {
+        gWorkspace.matrixBuffersTrReference.push_back(std::make_unique<SharedMatrixBuffer>(gWorkspace.clientPid, SharedMatrixBuffer::Endpoint::Client, gWorkspace.buffers.m, gWorkspace.buffers.n, bufferIndex, SharedMatrixBuffer::BufferInitMode::Zero, TR_MATRIX_BUF_NAME_SUFFIX));
+        TransposeNaive(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n);
+
+        if (!MatricesAreEqual(gWorkspace.matrixBuffersTr[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n))
+        {
+            std::cerr << "Transpose mismatch for buffer " << bufferIndex << std::endl;
+            exit(1);
+        }
+    }
 
     return 0;
 }

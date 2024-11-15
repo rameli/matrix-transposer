@@ -62,7 +62,7 @@ target_include_directories(transpose_server PUBLIC lib transposer_demo/common)
 target_include_directories(transpose_client PUBLIC lib transposer_demo/common)
 
 target_link_libraries(transpose_server PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue mat-transpose)
-target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue)
+target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue mat-transpose)
 
 # Add debug information flags for Debug builds
 target_compile_options(transpose_server PRIVATE $<$<CONFIG:Debug>:-g>)
