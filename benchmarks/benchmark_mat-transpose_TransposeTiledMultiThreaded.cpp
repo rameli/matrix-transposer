@@ -43,9 +43,6 @@ static void BM_TransposeTiledMultiThreaded(benchmark::State& state)
         TransposeTiledMultiThreadedOptimized(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
     }
 }
-BENCHMARK(BM_TransposeTiledMultiThreaded);
-
-
 BENCHMARK(BM_TransposeTiledMultiThreaded)->Setup(DoSetup)->Teardown(DoTeardown);
 
 BENCHMARK_MAIN();
