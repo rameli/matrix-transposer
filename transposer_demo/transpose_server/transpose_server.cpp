@@ -215,7 +215,7 @@ static void WorkloadDispatcher()
 {
     while (gWorkspace.running)
     {
-        shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
+        // shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
         for (auto& [clientId, clientContext] : gWorkspace.clientBank)
         {
             uint32_t bufferIndex;

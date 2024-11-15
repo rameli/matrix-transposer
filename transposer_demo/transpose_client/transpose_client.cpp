@@ -134,8 +134,8 @@ int main(int argc, char* argv[])
               << ", m: "<< gWorkspace.buffers.m 
               << ", n: " << gWorkspace.buffers.n 
               << ", k: " << gWorkspace.buffers.k
-              << "reps: " << gWorkspace.requestRepetitions
-              << ", totalReqs: " << gWorkspace.requestRepetitions * gWorkspace.buffers.k
+              << ", reps: " << gWorkspace.requestRepetitions
+              << ", reqs: " << gWorkspace.requestRepetitions * gWorkspace.buffers.k
               << ", avgTime: " << gWorkspace.stats.GetAverageElapsedTimeUs() << " (us)" << std::endl;
 
     if (errorFound)
