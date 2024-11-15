@@ -15,6 +15,7 @@
 #include "Constants.h"
 #include "ClientWorkspace.h"
 #include "mat-transpose/mat-transpose.h"
+#include "ClientStats.h"
 
 
 using std::vector;
@@ -105,8 +106,10 @@ int main(int argc, char* argv[])
     {
         for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
         {
+            gWorkspace.stats.StartTimer();
             gWorkspace.pRequestQueue->Enqueue(bufferIndex);
             gWorkspace.pTransposeReadyFutex->Wait();
+            gWorkspace.stats.StopTimer();
         }
     }
 
@@ -115,6 +118,7 @@ int main(int argc, char* argv[])
 
     gWorkspace.pIpcClient->Send(unsubscribeMessage);
 
+    bool errorFound = false;
     for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
     {
         TransposeNaive(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n);
@@ -122,8 +126,21 @@ int main(int argc, char* argv[])
         if (!MatricesAreEqual(gWorkspace.matrixBuffersTr[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n))
         {
             std::cout << "Client " << gWorkspace.clientPid << ": ERROR in buffer " << bufferIndex << std::endl;
-            exit(1);
+            errorFound = true;
         }
+    }
+
+    std::clog << "client: " << gWorkspace.clientPid 
+              << ", m: "<< gWorkspace.buffers.m 
+              << ", n: " << gWorkspace.buffers.n 
+              << ", k" << gWorkspace.buffers.k
+              << "reps: " << gWorkspace.requestRepetitions
+              << ", totalReqs: " << gWorkspace.requestRepetitions * gWorkspace.buffers.k
+              << ", avgTime: " << gWorkspace.stats.GetAverageElapsedTimeUs() << " (us)" << std::endl;
+
+    if (errorFound)
+    {
+        exit(1);
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
