@@ -8,6 +8,21 @@ struct Block
     uint32_t j_start, j_end;
 };
 
+static void workerThread()
+{
+    
+}
+
+static void setup()
+{
+
+}
+
+static void teardown()
+{
+    
+}
+
 void TransposeTiledMultiThreadedOptimized(uint64_t* src, uint64_t* dst, uint32_t rowCount, uint32_t colCount, uint32_t tileSize, uint32_t numThreads)
 {
     uint32_t numBlocksInRow = (rowCount + tileSize - 1) / tileSize;

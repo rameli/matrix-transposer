@@ -145,8 +145,8 @@ TEST_P(TileMultiThreadedTest, TileMultiThreaded)
     uint32_t tileSize = std::get<2>(GetParam());
     uint32_t numThreads = std::get<3>(GetParam());
 
-    int rowCount = 1 << m;
-    int columnCount = 1 << n;
+    uint32_t rowCount = 1 << m;
+    uint32_t columnCount = 1 << n;
 
     uint64_t* originalMat = new uint64_t[rowCount * columnCount];  // Original matrix
     uint64_t* transposeRes = new uint64_t[columnCount * rowCount]; // Transposed matrix for algorithms
@@ -159,7 +159,7 @@ TEST_P(TileMultiThreadedTest, TileMultiThreaded)
 
 
     TransposeNaive(originalMat, refTranspose, rowCount, columnCount);
-    TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
+    TransposeTiledMultiThreadedOptimized(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
 
     EXPECT_TRUE(MatricesAreEqual(transposeRes, refTranspose, columnCount, rowCount));
 

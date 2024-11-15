@@ -109,13 +109,13 @@ gtest_discover_tests(run_tests)
 set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
 
 set(BENCHMARK_SOURCES
-    benchmarks/benchmark_SpscQueue.cpp
+    benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreaded.cpp
 )
 
 add_executable(run_benchmarks ${BENCHMARK_SOURCES})
 
 target_include_directories(run_benchmarks PUBLIC lib)
-target_link_libraries(run_benchmarks PRIVATE benchmark::benchmark futex matrix-buf shared-mem unix-socks spsc-queue mem-utils)
+target_link_libraries(run_benchmarks PRIVATE benchmark::benchmark futex matrix-buf shared-mem unix-socks spsc-queue mem-utils mat-transpose)
 
 # Set maximum optimization for the benchmark build
 target_compile_options(run_benchmarks PRIVATE $<$<CONFIG:Release>:-O3>)
