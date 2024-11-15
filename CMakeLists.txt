@@ -7,10 +7,8 @@ project(matrix_transposer)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Set the build type to Debug by default
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_BUILD_TYPE Debug)
-endif()
+# Set the build type to Release by default
+set(CMAKE_BUILD_TYPE Release)
 
 # -------------------------------------------------------
 # Libraries
@@ -66,7 +64,7 @@ target_include_directories(transpose_client PUBLIC lib transposer_demo/common)
 target_link_libraries(transpose_server PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue)
 target_link_libraries(transpose_client PRIVATE futex matrix-buf presentation mem-utils shared-mem unix-socks spsc-queue)
 
-# Add debug information flags
+# Add debug information flags for Debug builds
 target_compile_options(transpose_server PRIVATE $<$<CONFIG:Debug>:-g>)
 target_compile_options(transpose_client PRIVATE $<$<CONFIG:Debug>:-g>)
 
@@ -120,9 +118,7 @@ target_link_libraries(run_benchmarks PRIVATE benchmark::benchmark futex matrix-b
 # Set maximum optimization for the benchmark build
 target_compile_options(run_benchmarks PRIVATE $<$<CONFIG:Release>:-O3>)
 
-# Force Release build type when building benchmarks
-set_target_properties(run_benchmarks PROPERTIES CMAKE_BUILD_TYPE Release)
-
+# Fetch Google Benchmark library
 FetchContent_Declare(
     benchmark
     GIT_REPOSITORY https://github.com/google/benchmark.git

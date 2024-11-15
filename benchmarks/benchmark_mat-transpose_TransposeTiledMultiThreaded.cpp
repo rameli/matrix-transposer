@@ -1,5 +1,6 @@
 #include <benchmark/benchmark.h>
 #include <cstdint>
+#include <sstream>
 
 #include "mat-transpose/mat-transpose.h"
 
@@ -12,13 +13,14 @@ static uint32_t numThreads;
 
 static void DoSetup(const benchmark::State& state)
 {
-    uint32_t m = 4;
-    uint32_t n = 4;
+    // Retrieve m, n, tileSize, and numThreads from the state ranges
+    uint32_t m = state.range(0);
+    uint32_t n = state.range(1);
+    tileSize = state.range(2);
+    numThreads = state.range(3);
 
     rowCount = 1 << m;
     columnCount = 1 << n;
-    tileSize = 32;
-    numThreads = 8;
 
     originalMat = new uint64_t[rowCount * columnCount];
     transposeRes = new uint64_t[columnCount * rowCount];
@@ -27,13 +29,12 @@ static void DoSetup(const benchmark::State& state)
     {
         originalMat[i] = i;
     }
-
 }
 
 static void DoTeardown(const benchmark::State& state)
 {
-        delete[] originalMat;
-        delete[] transposeRes;
+    delete[] originalMat;
+    delete[] transposeRes;
 }
 
 static void BM_TransposeTiledMultiThreaded(benchmark::State& state)
@@ -43,6 +44,16 @@ static void BM_TransposeTiledMultiThreaded(benchmark::State& state)
         TransposeTiledMultiThreadedOptimized(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
     }
 }
-BENCHMARK(BM_TransposeTiledMultiThreaded)->Setup(DoSetup)->Teardown(DoTeardown);
+
+// Set up the benchmark ranges and add names for each argument
+BENCHMARK(BM_TransposeTiledMultiThreaded)
+    ->Setup(DoSetup)
+    ->Teardown(DoTeardown)
+    ->ArgsProduct({{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14},
+                   {14},
+                   {32},
+                   {8}})
+    ->ArgNames({"m", "n", "tileSize", "numThreads"})
+    ->Unit(benchmark::kMicrosecond);
 
 BENCHMARK_MAIN();
