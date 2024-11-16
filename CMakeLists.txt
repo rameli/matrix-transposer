@@ -23,11 +23,7 @@ add_library(spsc-queue SHARED lib/spsc-queue/SpscQueue.cpp)
 add_library(stats INTERFACE)
 add_library(mat-transpose SHARED
     lib/mat-transpose/TransposeNaive.cpp
-    lib/mat-transpose/TransposeNaiveInPlace.cpp
     lib/mat-transpose/TransposeTiledMultiThreaded.cpp
-    lib/mat-transpose/TransposeTiledInPlaceMultiThreaded.cpp
-    lib/mat-transpose/TransposeRecursive.cpp
-    lib/mat-transpose/TransposeRecursiveInPlace.cpp
     lib/mat-transpose/MatricesAreEqual.cpp
 )
 
@@ -109,7 +105,11 @@ gtest_discover_tests(run_tests)
 set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
 
 set(BENCHMARK_SOURCES
-    benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreaded.cpp
+    benchmarks/bechmark_main.cpp
+    # benchmarks/bechmark_SpscQueueSingleThreaded.cpp
+    # benchmarks/bechmark_SpscQueueMultiThreaded.cpp
+    benchmarks/bechmark_SpscQueueMultiProcess.cpp
+    # benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreaded.cpp
 )
 
 add_executable(run_benchmarks ${BENCHMARK_SOURCES})
