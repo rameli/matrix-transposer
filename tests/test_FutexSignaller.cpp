@@ -27,8 +27,7 @@ static bool ShmObjectExists(uint32_t uniqueId)
     return std::filesystem::exists(filePath);
 }
 
-
-TEST(FutexTestSuite, CorrectInit)
+TEST(FutexTestSuite, SingleInit)
 {
     std::unique_ptr<FutexSignaller> pFutex;
     uint32_t uniqueId = getpid();
@@ -36,7 +35,7 @@ TEST(FutexTestSuite, CorrectInit)
     EXPECT_EQ(ShmObjectExists(uniqueId), true);
 }
 
-TEST(FutexTestSuite, CorrectInitAndDestroy)
+TEST(FutexTestSuite, InitAndDestroy)
 {
     std::unique_ptr<FutexSignaller> pFutex;
     uint32_t uniqueId = getpid();
@@ -48,6 +47,23 @@ TEST(FutexTestSuite, CorrectInitAndDestroy)
     // Destroy the futex
     ASSERT_NO_THROW(pFutex.reset());
     EXPECT_EQ(ShmObjectExists(uniqueId), false);
+}
+
+TEST(FutexTestSuite, MultipleInitAndDestroy)
+{
+    std::unique_ptr<FutexSignaller> pFutex;
+    uint32_t uniqueId = getpid();
+    
+    for (int i = 0; i < 100; i++)
+    {
+        // Create the futex
+        ASSERT_NO_THROW(pFutex = std::make_unique<FutexSignaller>(uniqueId, FutexSignaller::Role::Waiter, ""));
+        EXPECT_EQ(ShmObjectExists(uniqueId), true);
+
+        // Destroy the futex
+        ASSERT_NO_THROW(pFutex.reset());
+        EXPECT_EQ(ShmObjectExists(uniqueId), false);
+    }
 }
 
 TEST(FutexTestSuite, TwoThreads)

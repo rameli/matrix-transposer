@@ -23,11 +23,11 @@ public:
 
     void Wake();
 
+    std::atomic<uint32_t> *m_RawPointer;
 private:
     static std::string CreateShmObjectName(uint32_t ownerPid, const std::string& nameSuffix);
 
     uint32_t m_OwnerPid;
-    std::atomic<uint32_t> *m_RawPointer;
     Role m_Role;
 
     std::unique_ptr<SharedMemory> mp_SharedMemory;
