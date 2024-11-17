@@ -3,22 +3,27 @@
 #include <memory>
 #include <thread>
 
-#include "spsc-queue/SpscQueue.h"
+#include "spsc-queue/SpscQueueSeqLock.h"
 
 static constexpr size_t CAPACITY = 1024*1024;
-static std::unique_ptr<SpscQueue> pQueue;
+static std::unique_ptr<SpscQueueSeqLock> pQueue;
 
 static std::thread gConsumerThread;
 
 static void DoSetup(const benchmark::State& state)
 {
-    pQueue = std::make_unique<SpscQueue>(getpid(), SpscQueue::Role::Producer, CAPACITY, "");
+    pQueue = std::make_unique<SpscQueueSeqLock>(getpid(), SpscQueueSeqLock::Role::Producer, CAPACITY, "");
+    uint32_t numItems = state.range(0);
+    
     gConsumerThread = std::thread([&]()
     {
         uint32_t item;
-        for (int i = 0; i < state.range(0); i++)
+        for (int i = 0; i < numItems; i++)
         {
-            pQueue->Dequeue(item);
+            while(!pQueue->Dequeue(item))
+            {
+                std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+            }
             benchmark::DoNotOptimize(item);
         }
     });
@@ -26,12 +31,13 @@ static void DoSetup(const benchmark::State& state)
 
 static void DoTeardown(const benchmark::State& state)
 {
+    gConsumerThread.join();
     pQueue.reset();
 }
 
 // ============================================================================
 
-static void BM_SpscQueueEnqueueDeque(benchmark::State& state)
+static void BM_SpscQueueSeqLockEnqueueDeque(benchmark::State& state)
 {
     uint32_t numItems = state.range(0);
 
@@ -41,12 +47,7 @@ static void BM_SpscQueueEnqueueDeque(benchmark::State& state)
         {
             pQueue->Enqueue(i);
         }
-
-        gConsumerThread.join();
     }
 }
-BENCHMARK(BM_SpscQueueEnqueueDeque)
-    ->Setup(DoSetup)
-    ->Teardown(DoTeardown)
-    ->ArgName("Item Count")
-    ->Arg(1)->Arg(10)->Arg(100)->Arg(1000)->Arg(1000'000);
+BENCHMARK(BM_SpscQueueSeqLockEnqueueDeque)->Setup(DoSetup)->Teardown(DoTeardown)
+    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);

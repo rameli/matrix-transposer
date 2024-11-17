@@ -8,7 +8,7 @@
 #include "SharedMemory.h"
 #include "FutexSignaller.h"
 
-class SpscQueue
+class SpscQueueSeqLock
 {
 public:
     enum class Role
@@ -17,19 +17,20 @@ public:
         Consumer
     };
 
-    SpscQueue(uint32_t ownerPid, Role role, size_t capacity, const std::string& nameSuffix);
-    ~SpscQueue();
+    SpscQueueSeqLock(uint32_t ownerPid, Role role, size_t capacity, const std::string& nameSuffix);
+    ~SpscQueueSeqLock();
 
     const std::string& GetName() const;
-    uint32_t GetCapacity() const;
+    size_t GetRealCapacity() const;
     bool Enqueue(uint32_t item);
     bool Dequeue(uint32_t& item);
 
 private:
     struct QueueData
     {
-        alignas(64) std::atomic<size_t> head;
-        alignas(64) std::atomic<size_t> tail;
+        alignas(64) size_t head;
+        alignas(64) size_t tail;
+        alignas(64) std::atomic<size_t> seq;
         alignas(64) uint32_t buffer[];
     };
 
@@ -39,6 +40,7 @@ private:
     uint32_t m_OwnerPid;
     Role m_Role;
     size_t m_Capacity;
+    size_t m_CapacityMinusOne;
 
     QueueData* mp_QueueData;
 

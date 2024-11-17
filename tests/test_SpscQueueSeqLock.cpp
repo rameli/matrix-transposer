@@ -9,22 +9,24 @@
 #include <fcntl.h>
 #include <cstdint>
 
-#include "spsc-queue/SpscQueue.h"
+#include "spsc-queue/SpscQueueSeqLock.h"
 
-TEST(SpscQueueTestSuite, SingleProcess)
+TEST(SpscQueueSeqLockTestSuite, SingleProcess)
 {
     constexpr size_t CAPACITY = 1024*1024;
+    size_t realCapacity;
 
-    SpscQueue queue(getpid(), SpscQueue::Role::Producer, CAPACITY, "");
+    SpscQueueSeqLock queue(getpid(), SpscQueueSeqLock::Role::Producer, CAPACITY, "");
+    realCapacity = queue.GetRealCapacity();
 
-    for (int i = 0; i < CAPACITY; ++i)
+    for (int i = 0; i < realCapacity; i++)
     {
         ASSERT_TRUE(queue.Enqueue(i));
     }
 
-    ASSERT_FALSE(queue.Enqueue(CAPACITY));
+    ASSERT_FALSE(queue.Enqueue(0));
 
-    for (int i = 0; i < CAPACITY; i++)
+    for (int i = 0; i < realCapacity; i++)
     {
         uint32_t item;
         ASSERT_TRUE(queue.Dequeue(item));
@@ -35,12 +37,14 @@ TEST(SpscQueueTestSuite, SingleProcess)
     ASSERT_FALSE(queue.Dequeue(item));
 }
 
-TEST(SpscQueueTestSuite, TwoProcesses)
+TEST(SpscQueueSeqLockTestSuite, TwoProcesses)
 {
     constexpr size_t CAPACITY = 1024*1024;
+    size_t realCapacity;
 
     uint32_t producerPid = getpid();
-    SpscQueue queue(producerPid, SpscQueue::Role::Producer, CAPACITY, "");
+    SpscQueueSeqLock queue(producerPid, SpscQueueSeqLock::Role::Producer, CAPACITY, "");
+    realCapacity = queue.GetRealCapacity();
 
     pid_t pid = fork();
     if (pid == -1)
@@ -49,11 +53,11 @@ TEST(SpscQueueTestSuite, TwoProcesses)
     }
     else if (pid == 0)
     {
-        SpscQueue queue(producerPid, SpscQueue::Role::Consumer, CAPACITY, "");
+        SpscQueueSeqLock queue(producerPid, SpscQueueSeqLock::Role::Consumer, CAPACITY, "");
 
         int received = 0;
         uint32_t item;
-        while (received < CAPACITY)
+        while (received < realCapacity)
         {
             if (queue.Dequeue(item))
             {
@@ -65,7 +69,7 @@ TEST(SpscQueueTestSuite, TwoProcesses)
     }
     else
     {
-        for (int i = 0; i < CAPACITY; i++)
+        for (int i = 0; i < realCapacity; i++)
         {
             while (!queue.Enqueue(i))
             {
@@ -79,12 +83,15 @@ TEST(SpscQueueTestSuite, TwoProcesses)
     }
 }
 
-TEST(SpscQueueTestSuite, TestQueueFull)
+TEST(SpscQueueSeqLockTestSuite, TestQueueFull)
 {
     constexpr size_t CAPACITY = 1024*1024;
-    SpscQueue queue(getpid(), SpscQueue::Role::Producer, CAPACITY, "");
+    size_t realCapacity;
 
-    for (int i = 0; i < CAPACITY; i++)
+    SpscQueueSeqLock queue(getpid(), SpscQueueSeqLock::Role::Producer, CAPACITY, "");
+    realCapacity = queue.GetRealCapacity();
+
+    for (int i = 0; i < realCapacity; i++)
     {
         ASSERT_TRUE(queue.Enqueue(i));
     }
@@ -92,22 +99,22 @@ TEST(SpscQueueTestSuite, TestQueueFull)
     ASSERT_FALSE(queue.Enqueue(0));
 }
 
-TEST(SpscQueueTestSuite, TestQueueEmpty)
+TEST(SpscQueueSeqLockTestSuite, TestQueueEmpty)
 {
     constexpr size_t CAPACITY = 1024*1024;
-    SpscQueue queue(getpid(), SpscQueue::Role::Producer, CAPACITY, "");
+    SpscQueueSeqLock queue(getpid(), SpscQueueSeqLock::Role::Producer, CAPACITY, "");
 
     uint32_t item;
     ASSERT_FALSE(queue.Dequeue(item));
 }
 
-TEST(SpscQueueTestSuite, TestMultipleItems)
+TEST(SpscQueueSeqLockTestSuite, TestMultipleItems)
 {
     uint32_t producerPid = getpid();
     constexpr size_t CAPACITY = 1024*1024;
     constexpr size_t TOTAL_ITEMS = 1234;
 
-    SpscQueue producerQueue(producerPid, SpscQueue::Role::Producer, CAPACITY, "");
+    SpscQueueSeqLock producerQueue(producerPid, SpscQueueSeqLock::Role::Producer, CAPACITY, "");
 
     pid_t pid = fork();
     if (pid == -1)
@@ -116,7 +123,7 @@ TEST(SpscQueueTestSuite, TestMultipleItems)
     }
     else if (pid == 0)
     {
-        SpscQueue consumerQueue(producerPid, SpscQueue::Role::Consumer, CAPACITY, "");
+        SpscQueueSeqLock consumerQueue(producerPid, SpscQueueSeqLock::Role::Consumer, CAPACITY, "");
 
         int received = 0;
         uint32_t item;

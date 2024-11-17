@@ -8,7 +8,7 @@
 #include "unix-socks/UnixSockIpcClient.h"
 #include "futex/FutexSignaller.h"
 #include "matrix-buf/SharedMatrixBuffer.h"
-#include "spsc-queue/SpscQueue.h"
+#include "spsc-queue/SpscQueueRingBuffer.h"
 #include "ClientServerMessage.h"
 #include "BufferDimensions.h"
 #include "ClientStats.h"
@@ -24,6 +24,6 @@ struct ClientWorkspace
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffers;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffersTr;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffersTrReference;
-    std::unique_ptr<SpscQueue> pRequestQueue;
+    std::unique_ptr<SpscQueueRingBuffer> pRequestQueue;
     std::unique_ptr<FutexSignaller> pTransposeReadyFutex;
 };

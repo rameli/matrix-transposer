@@ -2,19 +2,19 @@
 #include <cstdint>
 #include <memory>
 
-#include "spsc-queue/SpscQueue.h"
+#include "spsc-queue/SpscQueueRingBuffer.h"
 
 static constexpr size_t CAPACITY = 1024*1024;
-static std::unique_ptr<SpscQueue> pQueue;
+static std::unique_ptr<SpscQueueRingBuffer> pQueue;
 
 static void DoSetup(const benchmark::State& state)
 {
-    pQueue = std::make_unique<SpscQueue>(getpid(), SpscQueue::Role::Producer, CAPACITY, "");
+    pQueue = std::make_unique<SpscQueueRingBuffer>(getpid(), SpscQueueRingBuffer::Role::Producer, CAPACITY, "");
 }
 
 static void DoSetupDeque(const benchmark::State& state)
 {
-    pQueue = std::make_unique<SpscQueue>(getpid(), SpscQueue::Role::Producer, CAPACITY, "");
+    pQueue = std::make_unique<SpscQueueRingBuffer>(getpid(), SpscQueueRingBuffer::Role::Producer, CAPACITY, "");
 
     uint32_t numItems = state.range(0);
 
@@ -31,7 +31,7 @@ static void DoTeardown(const benchmark::State& state)
 
 // ============================================================================
 
-static void BM_SpscQueueEnque(benchmark::State& state)
+static void BM_SpscQueueRingBufferEnque(benchmark::State& state)
 {
     uint32_t numItems = state.range(0);
 
@@ -43,14 +43,10 @@ static void BM_SpscQueueEnque(benchmark::State& state)
         }
     }
 }
-BENCHMARK(BM_SpscQueueEnque)
-    ->Setup(DoSetup)
-    ->Teardown(DoTeardown)
-    ->ArgName("Item Count")
-    ->Arg(1)->Arg(10)->Arg(100)->Arg(1000)->Arg(1000'000);
+BENCHMARK(BM_SpscQueueRingBufferEnque)->Setup(DoSetup)->Teardown(DoTeardown)
+    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);
 
-
-static void BM_SpscQueueDeque(benchmark::State& state)
+static void BM_SpscQueueRingBufferDeque(benchmark::State& state)
 {
     uint32_t numItems = state.range(0);
 
@@ -64,14 +60,11 @@ static void BM_SpscQueueDeque(benchmark::State& state)
         }
     }
 }
-BENCHMARK(BM_SpscQueueDeque)
-    ->Setup(DoSetup)
-    ->Teardown(DoTeardown)
-    ->ArgName("Item Count")
-    ->Arg(1)->Arg(10)->Arg(100)->Arg(1000)->Arg(1000'000);
+BENCHMARK(BM_SpscQueueRingBufferDeque)->Setup(DoSetup)->Teardown(DoTeardown)
+    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);
 
 
-static void BM_SpscQueueEnqueueDeque(benchmark::State& state)
+static void BM_SpscQueueRingBufferEnqueueDeque(benchmark::State& state)
 {
     uint32_t numItems = state.range(0);
 
@@ -86,8 +79,5 @@ static void BM_SpscQueueEnqueueDeque(benchmark::State& state)
         }
     }
 }
-BENCHMARK(BM_SpscQueueEnqueueDeque)
-    ->Setup(DoSetup)
-    ->Teardown(DoTeardown)
-    ->ArgName("Item Count")
-    ->Arg(1)->Arg(10)->Arg(100)->Arg(1000)->Arg(1000'000);
+BENCHMARK(BM_SpscQueueRingBufferEnqueueDeque)->Setup(DoSetup)->Teardown(DoTeardown)
+    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);

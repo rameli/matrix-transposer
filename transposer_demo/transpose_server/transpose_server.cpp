@@ -67,7 +67,7 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         newClientContext.matrixBuffersTr.reserve(k);
 
         newClientContext.pTransposeReadyFutex = std::make_unique<FutexSignaller>(clientId, FutexSignaller::Role::Waker, "");
-        newClientContext.pRequestQueue = std::make_unique<SpscQueue>(clientId, SpscQueue::Role::Consumer, REQ_QUEUE_CAPACITY, REQ_QUEUE_NAME_SUFFIX);
+        newClientContext.pRequestQueue = std::make_unique<SpscQueueRingBuffer>(clientId, SpscQueueRingBuffer::Role::Consumer, REQ_QUEUE_CAPACITY, REQ_QUEUE_NAME_SUFFIX);
 
         for (uint32_t bufferIndex = 0; bufferIndex < k; bufferIndex++)
         {

@@ -19,7 +19,10 @@ add_library(presentation INTERFACE)
 add_library(shared-mem SHARED lib/shared-mem/SharedMemory.cpp)
 add_library(mem-utils INTERFACE)
 add_library(unix-socks INTERFACE)
-add_library(spsc-queue SHARED lib/spsc-queue/SpscQueue.cpp)
+add_library(spsc-queue SHARED
+    lib/spsc-queue/SpscQueueRingBuffer.cpp
+    lib/spsc-queue/SpscQueueSeqLock.cpp
+)
 add_library(stats INTERFACE)
 add_library(mat-transpose SHARED
     lib/mat-transpose/TransposeNaive.cpp
@@ -84,7 +87,8 @@ enable_testing()
 set(TEST_SOURCES
     tests/test_FutexSignaller.cpp
     tests/test_SharedMatrixBuffer.cpp
-    tests/test_SpscQueue.cpp
+    tests/test_SpscQueueRingBuffer.cpp
+    tests/test_SpscQueueSeqLock.cpp
     tests/test_MemoryUtils.cpp
     tests/test_mat-transpose.cpp
 )
@@ -105,10 +109,14 @@ gtest_discover_tests(run_tests)
 set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
 
 set(BENCHMARK_SOURCES
-    benchmarks/bechmark_main.cpp
-    # benchmarks/bechmark_SpscQueueSingleThreaded.cpp
-    # benchmarks/bechmark_SpscQueueMultiThreaded.cpp
-    benchmarks/bechmark_SpscQueueMultiProcess.cpp
+    benchmarks/benchmark_main.cpp
+    benchmarks/benchmark_SpscQueueRingBufferSingleThreaded.cpp
+    benchmarks/benchmark_SpscQueueRingBufferMultiThreaded.cpp
+    benchmarks/benchmark_SpscQueueRingBufferMultiProcess.cpp
+    benchmarks/benchmark_SpscQueueSeqLockSingleThreaded.cpp
+    benchmarks/benchmark_SpscQueueSeqLockMultiThreaded.cpp
+    benchmarks/benchmark_SpscQueueSeqLockMultiProcess.cpp
+
     # benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreaded.cpp
 )
 
