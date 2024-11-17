@@ -80,12 +80,15 @@ void workerThreadRoutine(uint32_t id)
 
 static bool ClientExists(uint32_t clientId, uint32_t& bankIndex)
 {
-    for (int i = 0; i < gWorkspace.clientBank.size(); i++)
+    for (int i = 0; i < MAX_CLIENTS; i++)
     {
-        if (gWorkspace.clientBank[i].id == clientId && gWorkspace.clientBank[i].subscribed)
+        if (gWorkspace.clientBank[i].subscribed)
         {
-            bankIndex = i;
-            return true;
+            if (gWorkspace.clientBank[i].id == clientId)
+            {
+                bankIndex = i;
+                return true;
+            }
         }
     }
 
@@ -95,10 +98,6 @@ static bool ClientExists(uint32_t clientId, uint32_t& bankIndex)
 static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, const UnixSockIpcContext& context)
 {
     int32_t indexToAdd;
-    if (gWorkspace.clientBank.size() >= MAX_CLIENTS)
-    {
-        return false;
-    }
 
     for (int i = 0; i < MAX_CLIENTS; i++)
     {
@@ -109,9 +108,9 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         }
     }
 
-    gWorkspace.clientBank.insert(gWorkspace.clientBank.begin() + indexToAdd, ClientContext());
+    gWorkspace.clientBank[indexToAdd] = ClientContext();
 
-    ClientContext& newClientContext = gWorkspace.clientBank.back();
+    ClientContext& newClientContext = gWorkspace.clientBank[indexToAdd];
 
     try
     {
@@ -139,8 +138,8 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
     catch(const std::exception& e)
     {
         {
-            unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
-            gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToAdd);
+            // unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
+            // gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToAdd);
         }
         std::cout << "Failed to set up client context for client PID: " << clientId << std::endl;
         std::cerr << e.what() << '\n';
@@ -217,17 +216,18 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
 
         {
             uint32_t bankIndex;
-            unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
+            // unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
 
             if (ClientExists(clientId, bankIndex))
             {
-                std::cout << "Client PID: " << clientId << " already exists" << std::endl;
+                std::clog << "Client PID: " << clientId << " already exists" << std::endl;
                 return;
             }
 
+            std::clog << "MessageHandler: Adding client PID: " << clientId << std::endl;
             if (!AddClient(clientId, m, n, k, context))
             {
-                std::cout << "Failed to add client PID: " << clientId << std::endl;
+                std::clog << "Failed to add client PID: " << clientId << std::endl;
                 return;
             }
         }
@@ -249,7 +249,7 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
         {
             uint32_t bankIndex;
 
-            unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
+            // unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
 
             if (!ClientExists(clientId, bankIndex))
             {
@@ -264,6 +264,8 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
             //         << ", k: " << clientContext.matrixSize.k
             //         << ", totalReqs: " << clientContext.stats.GetTotalRequests()
             //         << ", avgTime: " << clientContext.stats.GetAverageElapsedTimeUs() << " (ns)" << std::endl;
+
+            std::clog << "MessageHandler: Removing client PID: " << clientId << std::endl;
 
             RemoveClient(clientId);
         }
@@ -297,7 +299,7 @@ static void DisplayServerStats()
         table.clear();
 
         {
-            shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
+            // shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
             for (const auto& clientContext : gWorkspace.clientBank)
             {
                 if (!clientContext.subscribed)
@@ -375,20 +377,25 @@ int main(int argc, char* argv[])
     }
 
     gWorkspace.serverPid = getpid();
-    gWorkspace.clientBank.reserve(MAX_CLIENTS);
+    gWorkspace.clientBank.resize(MAX_CLIENTS);
     gWorkspace.workerThreads.reserve(gWorkspace.numWorkerThreads);
     gWorkspace.workerQueues.reserve(gWorkspace.numWorkerThreads);
     gWorkspace.running = true;
+
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        gWorkspace.clientBank[i].subscribed = false;
+    }
 
     try
     {
         gWorkspace.pIpcServer = std::make_unique<UnixSockIpcServer<ClientServerMessage>>(SERVER_SOCKET_ADDRESS, MessageHandler);
 
-        for (uint32_t i = 0; i < gWorkspace.numWorkerThreads; i++)
-        {
-            gWorkspace.workerQueues.push_back(std::make_unique<SpscQueueSeqLock>(i, SpscQueueSeqLock::Role::Producer, WORKER_THREAD_QUEUE_CAPACITY, WORKER_THREAD_QUEUE_NAME_SUFFIX));
-            gWorkspace.workerThreads.push_back(std::thread(workerThreadRoutine, i));
-        }
+        // for (uint32_t i = 0; i < gWorkspace.numWorkerThreads; i++)
+        // {
+        //     gWorkspace.workerQueues.push_back(std::make_unique<SpscQueueSeqLock>(i, SpscQueueSeqLock::Role::Producer, WORKER_THREAD_QUEUE_CAPACITY, WORKER_THREAD_QUEUE_NAME_SUFFIX));
+        //     gWorkspace.workerThreads.push_back(std::thread(workerThreadRoutine, i));
+        // }
     }
     catch(const std::exception& e)
     {
@@ -396,25 +403,25 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    std::thread serverStatsThread(DisplayServerStats);
+    // std::thread serverStatsThread(DisplayServerStats);
     std::thread workloadDispatcherThread(WorkloadDispatcher);
 
-    std::jthread ipcServerThread([&](){
-        for (int i = 0; i < gWorkspace.numWorkerThreads; i++)
-        {
-            gWorkspace.workerQueues[i]->Enqueue(i);
-        }
-    });
+    // std::jthread ipcServerThread([&](){
+    //     for (int i = 0; i < gWorkspace.numWorkerThreads; i++)
+    //     {
+    //         gWorkspace.workerQueues[i]->Enqueue(i);
+    //     }
+    // });
 
     std::cin.get();
     gWorkspace.running = false;
 
-    for (auto& th : gWorkspace.workerThreads)
-    {
-        th.join();
-    }
+    // for (auto& th : gWorkspace.workerThreads)
+    // {
+    //     th.join();
+    // }
     
-    serverStatsThread.join();
+    // serverStatsThread.join();
     workloadDispatcherThread.join();
 
     return 0;
