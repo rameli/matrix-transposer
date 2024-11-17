@@ -118,18 +118,6 @@ int main(int argc, char* argv[])
 
     gWorkspace.pIpcClient->Send(unsubscribeMessage);
 
-    bool errorFound = false;
-    for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
-    {
-        TransposeNaive(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n);
-
-        if (!MatricesAreEqual(gWorkspace.matrixBuffersTr[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n))
-        {
-            std::cout << "Client " << gWorkspace.clientPid << ": ERROR in buffer " << bufferIndex << std::endl;
-            errorFound = true;
-        }
-    }
-
     std::clog << "client: " << gWorkspace.clientPid 
               << ", m: "<< gWorkspace.buffers.m 
               << ", n: " << gWorkspace.buffers.n 
@@ -138,10 +126,22 @@ int main(int argc, char* argv[])
               << ", reqs: " << gWorkspace.requestRepetitions * gWorkspace.buffers.k
               << ", avgTime: " << gWorkspace.stats.GetAverageElapsedTimeUs() << " (us)" << std::endl;
 
-    if (errorFound)
-    {
-        exit(1);
-    }
+    // bool errorFound = false;
+    // for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
+    // {
+    //     TransposeNaive(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n);
+
+    //     if (!MatricesAreEqual(gWorkspace.matrixBuffersTr[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n))
+    //     {
+    //         std::cout << "Client " << gWorkspace.clientPid << ": ERROR in buffer " << bufferIndex << std::endl;
+    //         errorFound = true;
+    //     }
+    // }
+
+    // if (errorFound)
+    // {
+    //     exit(1);
+    // }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 

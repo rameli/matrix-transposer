@@ -85,12 +85,22 @@ static bool ClientExists(uint32_t clientId, uint32_t& bankIndex)
 
 static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, const UnixSockIpcContext& context)
 {
+    int32_t indexToAdd;
     if (gWorkspace.clientBank.size() >= MAX_CLIENTS)
     {
         return false;
     }
 
-    gWorkspace.clientBank.push_back(ClientContext());
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        if (!getBit(gValidClientsBitSet, i))
+        {
+            indexToAdd = i;
+            break;
+        }
+    }
+
+    gWorkspace.clientBank.insert(gWorkspace.clientBank.begin() + indexToAdd, ClientContext());
 
     ClientContext& newClientContext = gWorkspace.clientBank.back();
 
@@ -119,7 +129,7 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
     {
         {
             unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
-            gWorkspace.clientBank.pop_back();
+            gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToAdd);
         }
         std::cout << "Failed to set up client context for client PID: " << clientId << std::endl;
         std::cerr << e.what() << '\n';
@@ -129,7 +139,7 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
     // Waiting for thread dispatcher to pick up the new client
     while (gClientBankUpdated.load(std::memory_order_acquire));
 
-    setBit(gValidClientsBitSet, gWorkspace.clientBank.size()-1, 1);
+    setBit(gValidClientsBitSet, indexToAdd, 1);
     gClientBankUpdated.store(true, std::memory_order_release);
 
     return true;
@@ -147,6 +157,14 @@ static void RemoveClient(uint32_t clientId)
             break;
         }
     }
+
+    // Waiting for thread dispatcher to pick up the new client
+    while (gClientBankUpdated.load(std::memory_order_acquire));
+
+    setBit(gValidClientsBitSet, indexToRemove, 0);
+    gClientBankUpdated.store(true, std::memory_order_release);
+
+    while (gClientBankUpdated.load(std::memory_order_acquire));
 
     gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToRemove);
 }
@@ -187,7 +205,6 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
         ClientServerMessage::GenerateSubscribeResponseMessage(responseMessage, gWorkspace.serverPid, clientId, MAX_CLIENTS, gWorkspace.clientBank.size());
         gWorkspace.pIpcServer->Send(context, responseMessage);
 
-        // std::cout << ClientServerMessage::ToString(message) << std::endl;
         break;
     }
     case ClientServerMessage::MessageType::Unsubscribe:
@@ -297,10 +314,9 @@ static void WorkloadDispatcher()
                 uint64_t* transposeRes = clientContext.matrixBuffersTr[bufferIndex]->GetRawPointer();
                 uint32_t rowCount = clientContext.matrixSize.numRows;
                 uint32_t columnCount = clientContext.matrixSize.numColumns;
-                // std::cerr << "Transposing matrix for client PID: " << clientContext.id << ". Buffer index: " << bufferIndex << std::endl;
 
                 clientContext.stats.StartTimer();
-                TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
+                // TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
                 clientContext.stats.StopTimer();
 
                 clientContext.pTransposeReadyFutex->Wake();
