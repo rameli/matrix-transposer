@@ -5,7 +5,7 @@
 #include <vector>
 #include <unordered_map>
 
-#include "spsc-queue/SpscQueueRingBuffer.h"
+#include "spsc-queue/SpscQueueSeqLock.h"
 #include "futex/FutexSignaller.h"
 #include "matrix-buf/SharedMatrixBuffer.h"
 #include "unix-socks/UnixSockIpcServer.h"
@@ -23,7 +23,7 @@ struct ClientContext
     UnixSockIpcContext ipcContext;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffers;
     std::vector<std::unique_ptr<SharedMatrixBuffer>> matrixBuffersTr;
-    std::unique_ptr<SpscQueueRingBuffer> pRequestQueue;
+    std::unique_ptr<SpscQueueSeqLock> pRequestQueue;
     std::unique_ptr<FutexSignaller> pTransposeReadyFutex;
 };
 

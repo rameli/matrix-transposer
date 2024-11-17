@@ -18,7 +18,7 @@ public:
     {
         endTime = Clock::now();
         m_TotalRequests++;
-        m_TotalElapsedTimeUs += std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+        m_TotalElapsedTimeUs += std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime).count();
     }
 
     uint64_t GetTotalRequests() const
