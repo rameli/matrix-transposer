@@ -3,12 +3,13 @@
 #include <cstdint>
 #include <memory>
 #include <shared_mutex>
+#include <vector>
 
 #include "ClientContext.h"
 #include "unix-socks/UnixSockIpcServer.h"
 #include "ClientServerMessage.h"
 
-using ClientBank = std::unordered_map<ClientId, ClientContext>;
+using ClientBank = std::vector<ClientContext>;
 
 struct ServerWorkspace
 {

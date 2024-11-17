@@ -1,32 +1,31 @@
+#include <atomic>
+#include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
-#include <string>
-#include <cstdlib>
-#include <cstdint>
-#include <unistd.h>
-#include <vector>
 #include <mutex>
-#include <unordered_map>
 #include <sstream>
-#include <mutex>
-#include <cstdlib>
+#include <string>
+#include <unistd.h>
+#include <unordered_map>
+#include <vector>
 
-#include "futex/FutexSignaller.h"
-#include "matrix-buf/SharedMatrixBuffer.h"
-#include "unix-socks/UnixSockIpcServer.h"
-#include "presentation/Table.h"
+#include "ClientContext.h"
 #include "ClientServerMessage.h"
 #include "Constants.h"
-#include "ClientContext.h"
-#include "ServerWorkspace.h"
+#include "futex/FutexSignaller.h"
 #include "mat-transpose/mat-transpose.h"
+#include "matrix-buf/SharedMatrixBuffer.h"
+#include "presentation/Table.h"
+#include "ServerWorkspace.h"
+#include "unix-socks/UnixSockIpcServer.h"
 
-using std::vector;
-using std::unique_ptr;
-using std::unordered_map;
-using std::unique_lock;
 using std::shared_lock;
 using std::shared_mutex;
+using std::unique_lock;
+using std::unique_ptr;
+using std::unordered_map;
+using std::vector;
 
 using MatrixTransposer::Constants::SERVER_SOCKET_ADDRESS;
 using MatrixTransposer::Constants::MATRIX_BUF_NAME_SUFFIX;
@@ -38,9 +37,22 @@ using MatrixTransposer::Constants::TRANSPOSE_TILE_SIZE;
 
 ServerWorkspace gWorkspace;
 
+// ^^^^^^^^^^^^^^^^^^^^^^^^^^
+std::atomic<bool> gClientBankUpdate { false };
+uint64_t gValidClientIds { 0 };
+// --------------------------
+
 static bool ClientExists(uint32_t clientId)
 {
-    return gWorkspace.clientBank.contains(clientId);
+    for (int i = 0; i < gWorkspace.clientBank.size(); i++)
+    {
+        if (gWorkspace.clientBank[i].id == clientId)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, const UnixSockIpcContext& context)
@@ -50,9 +62,9 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         return false;
     }
 
-    gWorkspace.clientBank[clientId] = ClientContext();
+    gWorkspace.clientBank.push_back(ClientContext());
 
-    ClientContext& newClientContext = gWorkspace.clientBank[clientId];
+    ClientContext& newClientContext = gWorkspace.clientBank.back();
 
     try
     {
@@ -79,7 +91,7 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
     {
         {
             unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
-            gWorkspace.clientBank.erase(clientId);
+            gWorkspace.clientBank.pop_back();
         }
         std::cout << "Failed to set up client context for client PID: " << clientId << std::endl;
         std::cerr << e.what() << '\n';
@@ -91,7 +103,18 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
 
 static void RemoveClient(uint32_t clientId)
 {
-    gWorkspace.clientBank.erase(clientId);
+    int indexToRemove = 0;
+
+    for (int i = 0; i < gWorkspace.clientBank.size(); i++)
+    {
+        if (gWorkspace.clientBank[i].id == clientId)
+        {
+            indexToRemove = i;
+            break;
+        }
+    }
+
+    gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToRemove);
 }
 
 static void MessageHandler(const UnixSockIpcContext& context, const ClientServerMessage& message)
@@ -192,12 +215,12 @@ static void DisplayServerStats()
             shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
             for (const auto& clientContext : gWorkspace.clientBank)
             {
-                table.addRow({std::to_string(clientContext.first),
-                            std::to_string(clientContext.second.matrixSize.m),
-                            std::to_string(clientContext.second.matrixSize.n),
-                            std::to_string(clientContext.second.matrixSize.k),
-                            std::to_string(clientContext.second.stats.GetTotalRequests()),
-                            std::to_string(clientContext.second.stats.GetAverageElapsedTimeUs())
+                table.addRow({std::to_string(clientContext.id),
+                            std::to_string(clientContext.matrixSize.m),
+                            std::to_string(clientContext.matrixSize.n),
+                            std::to_string(clientContext.matrixSize.k),
+                            std::to_string(clientContext.stats.GetTotalRequests()),
+                            std::to_string(clientContext.stats.GetAverageElapsedTimeUs())
                             });
             }
         }
@@ -216,7 +239,7 @@ static void WorkloadDispatcher()
     while (gWorkspace.running)
     {
         shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
-        for (auto& [clientId, clientContext] : gWorkspace.clientBank)
+        for (auto& clientContext : gWorkspace.clientBank)
         {
             uint32_t bufferIndex;
             if (clientContext.pRequestQueue->Dequeue(bufferIndex))
@@ -225,7 +248,7 @@ static void WorkloadDispatcher()
                 uint64_t* transposeRes = clientContext.matrixBuffersTr[bufferIndex]->GetRawPointer();
                 uint32_t rowCount = clientContext.matrixSize.numRows;
                 uint32_t columnCount = clientContext.matrixSize.numColumns;
-                // std::cerr << "Transposing matrix for client PID: " << clientId << ". Buffer index: " << bufferIndex << std::endl;
+                // std::cerr << "Transposing matrix for client PID: " << clientContext.id << ". Buffer index: " << bufferIndex << std::endl;
 
                 clientContext.stats.StartTimer();
                 TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
