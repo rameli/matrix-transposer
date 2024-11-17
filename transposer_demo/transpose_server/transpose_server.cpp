@@ -42,12 +42,13 @@ std::atomic<bool> gClientBankUpdate { false };
 uint64_t gValidClientIds { 0 };
 // --------------------------
 
-static bool ClientExists(uint32_t clientId)
+static bool ClientExists(uint32_t clientId, uint32_t& bankIndex)
 {
     for (int i = 0; i < gWorkspace.clientBank.size(); i++)
     {
         if (gWorkspace.clientBank[i].id == clientId)
         {
+            bankIndex = i;
             return true;
         }
     }
@@ -133,9 +134,10 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
         }
 
         {
+            uint32_t bankIndex;
             unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
 
-            if (ClientExists(clientId))
+            if (ClientExists(clientId, bankIndex))
             {
                 std::cout << "Client PID: " << clientId << " already exists" << std::endl;
                 return;
@@ -164,15 +166,17 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
         }
 
         {
+            uint32_t bankIndex;
+
             unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
 
-            if (!ClientExists(clientId))
+            if (!ClientExists(clientId, bankIndex))
             {
                 std::cout << "Cannot remove client PID: " << clientId << ". Does not exist" << std::endl;
                 return;
             }
 
-            ClientContext& clientContext = gWorkspace.clientBank[clientId];
+            ClientContext& clientContext = gWorkspace.clientBank[bankIndex];
             std::clog << "client: " << clientContext.id 
                     << ", m: "<< clientContext.matrixSize.m
                     << ", n: " << clientContext.matrixSize.n 
@@ -183,7 +187,6 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
             RemoveClient(clientId);
         }
 
-        // std::cout << ClientServerMessage::ToString(message) << std::endl;
         break;
     }
     default:
