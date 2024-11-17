@@ -77,6 +77,7 @@ static void BM_SpscQueueRingBufferEnqueueDeque(benchmark::State& state)
     }
 }
 BENCHMARK(BM_SpscQueueRingBufferEnqueueDeque)
+    ->Iterations(1)
     ->Setup(DoSetup)
     ->Teardown(DoTeardown)
     ->ArgName("Item Count")
