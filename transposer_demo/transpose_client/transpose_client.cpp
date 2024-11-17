@@ -108,7 +108,13 @@ int main(int argc, char* argv[])
         {
             gWorkspace.stats.StartTimer();
             gWorkspace.pRequestQueue->Enqueue(bufferIndex);
+            
             gWorkspace.pTransposeReadyFutex->Wait();
+            // gWorkspace.pTransposeReadyFutex->m_RawPointer->store(1, std::memory_order_release);
+            // while(gWorkspace.pTransposeReadyFutex->m_RawPointer->load(std::memory_order_acquire) == 1)
+            // {
+            // }
+            
             gWorkspace.stats.StopTimer();
         }
     }
@@ -124,24 +130,24 @@ int main(int argc, char* argv[])
               << ", k: " << gWorkspace.buffers.k
               << ", reps: " << gWorkspace.requestRepetitions
               << ", reqs: " << gWorkspace.requestRepetitions * gWorkspace.buffers.k
-              << ", avgTime: " << gWorkspace.stats.GetAverageElapsedTimeUs() << " (us)" << std::endl;
+              << ", avgTime: " << gWorkspace.stats.GetAverageElapsedTimeUs() << " (ns)" << std::endl;
 
-    // bool errorFound = false;
-    // for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
-    // {
-    //     TransposeNaive(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n);
+    bool errorFound = false;
+    for (int bufferIndex = 0; bufferIndex < gWorkspace.buffers.k; bufferIndex++)
+    {
+        TransposeNaive(gWorkspace.matrixBuffers[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n);
 
-    //     if (!MatricesAreEqual(gWorkspace.matrixBuffersTr[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n))
-    //     {
-    //         std::cout << "Client " << gWorkspace.clientPid << ": ERROR in buffer " << bufferIndex << std::endl;
-    //         errorFound = true;
-    //     }
-    // }
+        if (!MatricesAreEqual(gWorkspace.matrixBuffersTr[bufferIndex]->GetRawPointer(), gWorkspace.matrixBuffersTrReference[bufferIndex]->GetRawPointer(), 1 << gWorkspace.buffers.m, 1 << gWorkspace.buffers.n))
+        {
+            std::cout << "Client " << gWorkspace.clientPid << ": ERROR in buffer " << bufferIndex << std::endl;
+            errorFound = true;
+        }
+    }
 
-    // if (errorFound)
-    // {
-    //     exit(1);
-    // }
+    if (errorFound)
+    {
+        exit(1);
+    }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 

@@ -241,7 +241,7 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
                     << ", n: " << clientContext.matrixSize.n 
                     << ", k: " << clientContext.matrixSize.k
                     << ", totalReqs: " << clientContext.stats.GetTotalRequests()
-                    << ", avgTime: " << clientContext.stats.GetAverageElapsedTimeUs() << " (us)" << std::endl;
+                    << ", avgTime: " << clientContext.stats.GetAverageElapsedTimeUs() << " (ns)" << std::endl;
 
             RemoveClient(clientId);
         }
@@ -327,9 +327,10 @@ static void WorkloadDispatcher()
 
                 clientContext.stats.StartTimer();
                 // TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
-                clientContext.stats.StopTimer();
 
                 clientContext.pTransposeReadyFutex->Wake();
+                // clientContext.pTransposeReadyFutex->m_RawPointer->store(0, std::memory_order_release);
+                clientContext.stats.StopTimer();
             }
         }
     }
@@ -368,6 +369,13 @@ int main(int argc, char* argv[])
 
     std::thread serverStatsThread(DisplayServerStats);
     std::thread workloadDispatcherThread(WorkloadDispatcher);
+
+    std::jthread ipcServerThread([&](){
+        for (int i = 0; i < gWorkspace.numWorkerThreads; i++)
+        {
+            gWorkspace.workerQueues[i]->Enqueue(i);
+        }
+    });
 
     std::cin.get();
     gWorkspace.running = false;
