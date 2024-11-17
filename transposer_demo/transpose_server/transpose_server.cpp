@@ -38,9 +38,36 @@ using MatrixTransposer::Constants::TRANSPOSE_TILE_SIZE;
 ServerWorkspace gWorkspace;
 
 // ^^^^^^^^^^^^^^^^^^^^^^^^^^
-std::atomic<bool> gClientBankUpdate { false };
-uint64_t gValidClientIds { 0 };
+std::atomic<bool> gClientBankUpdated { false };
+uint64_t gValidClientsBitSet { 0 };
 // --------------------------
+
+void setBit(uint64_t &number, int position, bool value) {
+    if (position < 0 || position >= 64)
+    {
+        throw std::out_of_range("Bit position must be in the range [0, 63]");
+    }
+    if (value)
+    {
+        // Set the bit to 1
+        number |= (1ULL << position);
+    }
+    else
+    {
+        // Set the bit to 0
+        number &= ~(1ULL << position);
+    }
+}
+
+bool getBit(const uint64_t &number, int position)
+{
+    if (position < 0 || position >= 64)
+    {
+        throw std::out_of_range("Bit position must be in the range [0, 63]");
+    }
+    
+    return (number & (1ULL << position)) != 0;
+}
 
 static bool ClientExists(uint32_t clientId, uint32_t& bankIndex)
 {
@@ -98,6 +125,12 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         std::cerr << e.what() << '\n';
         return false;
     }
+
+    // Waiting for thread dispatcher to pick up the new client
+    while (gClientBankUpdated.load(std::memory_order_acquire));
+
+    setBit(gValidClientsBitSet, gWorkspace.clientBank.size()-1, 1);
+    gClientBankUpdated.store(true, std::memory_order_release);
 
     return true;
 }
@@ -239,11 +272,24 @@ static void DisplayServerStats()
 
 static void WorkloadDispatcher()
 {
+    uint64_t localValidClientsBitSet = 0;
+
     while (gWorkspace.running)
     {
-        shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
-        for (auto& clientContext : gWorkspace.clientBank)
+        if (gClientBankUpdated.load(std::memory_order_acquire))
         {
+            localValidClientsBitSet = gValidClientsBitSet;
+            gClientBankUpdated.store(false, std::memory_order_release);
+        }
+
+        for (int i = 0; i < MAX_CLIENTS; i++)
+        {
+            if (!getBit(localValidClientsBitSet, i))
+            {
+                continue;
+            }
+            auto& clientContext = gWorkspace.clientBank[i];
+
             uint32_t bufferIndex;
             if (clientContext.pRequestQueue->Dequeue(bufferIndex))
             {
