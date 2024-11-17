@@ -29,9 +29,7 @@ static void DoTeardown(const benchmark::State& state)
     pQueue.reset();
 }
 
-// ============================================================================
-
-static void BM_SpscQueueSeqLockEnque(benchmark::State& state)
+static void BM_SpscQueueSeqLock_Enque(benchmark::State& state)
 {
     uint32_t numItems = state.range(0);
 
@@ -43,10 +41,11 @@ static void BM_SpscQueueSeqLockEnque(benchmark::State& state)
         }
     }
 }
-BENCHMARK(BM_SpscQueueSeqLockEnque)->Setup(DoSetup)->Teardown(DoTeardown)
+BENCHMARK(BM_SpscQueueSeqLock_Enque)
+    ->Setup(DoSetup)->Teardown(DoTeardown)
     ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);
 
-static void BM_SpscQueueSeqLockDeque(benchmark::State& state)
+static void BM_SpscQueueSeqLock_Deque(benchmark::State& state)
 {
     uint32_t numItems = state.range(0);
 
@@ -60,11 +59,12 @@ static void BM_SpscQueueSeqLockDeque(benchmark::State& state)
         }
     }
 }
-BENCHMARK(BM_SpscQueueSeqLockDeque)->Setup(DoSetup)->Teardown(DoTeardown)
+BENCHMARK(BM_SpscQueueSeqLock_Deque)
+    ->Setup(DoSetup)->Teardown(DoTeardown)
     ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);
 
 
-static void BM_SpscQueueSeqLockEnqueueDeque(benchmark::State& state)
+static void BM_SpscQueueSeqLock_EnqueueDeque(benchmark::State& state)
 {
     uint32_t numItems = state.range(0);
 
@@ -79,5 +79,6 @@ static void BM_SpscQueueSeqLockEnqueueDeque(benchmark::State& state)
         }
     }
 }
-BENCHMARK(BM_SpscQueueSeqLockEnqueueDeque)->Setup(DoSetup)->Teardown(DoTeardown)
+BENCHMARK(BM_SpscQueueSeqLock_EnqueueDeque)
+    ->Setup(DoSetup)->Teardown(DoTeardown)
     ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);

@@ -35,9 +35,7 @@ static void DoTeardown(const benchmark::State& state)
     pQueue.reset();
 }
 
-// ============================================================================
-
-static void BM_SpscQueueRingBufferEnqueueDeque(benchmark::State& state)
+static void BM_SpscQueueRingBuffer_MultiThreaded_EnqueueDeque(benchmark::State& state)
 {
     uint32_t numItems = state.range(0);
 
@@ -49,5 +47,6 @@ static void BM_SpscQueueRingBufferEnqueueDeque(benchmark::State& state)
         }
     }
 }
-BENCHMARK(BM_SpscQueueRingBufferEnqueueDeque)->Setup(DoSetup)->Teardown(DoTeardown)
+BENCHMARK(BM_SpscQueueRingBuffer_MultiThreaded_EnqueueDeque)
+    ->Setup(DoSetup)->Teardown(DoTeardown)
     ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);
