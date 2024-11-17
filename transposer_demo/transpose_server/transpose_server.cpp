@@ -34,13 +34,10 @@ using MatrixTransposer::Constants::REQ_QUEUE_NAME_SUFFIX;
 using MatrixTransposer::Constants::REQ_QUEUE_CAPACITY;
 using MatrixTransposer::Constants::MAX_CLIENTS;
 using MatrixTransposer::Constants::TRANSPOSE_TILE_SIZE;
+using MatrixTransposer::Constants::WORKER_THREAD_QUEUE_CAPACITY;
+using MatrixTransposer::Constants::WORKER_THREAD_QUEUE_NAME_SUFFIX;
 
 ServerWorkspace gWorkspace;
-
-// ^^^^^^^^^^^^^^^^^^^^^^^^^^
-std::atomic<bool> gClientBankUpdated { false };
-uint64_t gValidClientsBitSet { 0 };
-// --------------------------
 
 void setBit(uint64_t &number, int position, bool value) {
     if (position < 0 || position >= 64)
@@ -69,6 +66,18 @@ bool getBit(const uint64_t &number, int position)
     return (number & (1ULL << position)) != 0;
 }
 
+void workerThreadRoutine(uint32_t id)
+{
+    while (gWorkspace.running)
+    {
+        uint32_t bufferIndex;
+        if (gWorkspace.workerQueues[id]->Dequeue(bufferIndex))
+        {
+            
+        }
+    }
+}
+
 static bool ClientExists(uint32_t clientId, uint32_t& bankIndex)
 {
     for (int i = 0; i < gWorkspace.clientBank.size(); i++)
@@ -93,7 +102,7 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
 
     for (int i = 0; i < MAX_CLIENTS; i++)
     {
-        if (!getBit(gValidClientsBitSet, i))
+        if (!getBit(gWorkspace.validClientsBitSet, i))
         {
             indexToAdd = i;
             break;
@@ -137,10 +146,10 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
     }
 
     // Waiting for thread dispatcher to pick up the new client
-    while (gClientBankUpdated.load(std::memory_order_acquire));
+    while (gWorkspace.clientBankUpdated.load(std::memory_order_acquire));
 
-    setBit(gValidClientsBitSet, indexToAdd, 1);
-    gClientBankUpdated.store(true, std::memory_order_release);
+    setBit(gWorkspace.validClientsBitSet, indexToAdd, 1);
+    gWorkspace.clientBankUpdated.store(true, std::memory_order_release);
 
     return true;
 }
@@ -159,12 +168,12 @@ static void RemoveClient(uint32_t clientId)
     }
 
     // Waiting for thread dispatcher to pick up the new client
-    while (gClientBankUpdated.load(std::memory_order_acquire));
+    while (gWorkspace.clientBankUpdated.load(std::memory_order_acquire));
 
-    setBit(gValidClientsBitSet, indexToRemove, 0);
-    gClientBankUpdated.store(true, std::memory_order_release);
+    setBit(gWorkspace.validClientsBitSet, indexToRemove, 0);
+    gWorkspace.clientBankUpdated.store(true, std::memory_order_release);
 
-    while (gClientBankUpdated.load(std::memory_order_acquire));
+    while (gWorkspace.clientBankUpdated.load(std::memory_order_acquire));
 
     gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToRemove);
 }
@@ -255,11 +264,12 @@ static void DisplayServerStats()
 
         tableHeader << "****************************************************" << std::endl;
         tableHeader << "Server running with PID: " << gWorkspace.serverPid << std::endl;
+        tableHeader << "Worker Threads: " << gWorkspace.numWorkerThreads << "/" << std::thread::hardware_concurrency() << std::endl;
         tableHeader << "Clients: " << gWorkspace.clientBank.size() << "/" << MAX_CLIENTS << std::endl;
 
         tableFooter << "Press ENTER to stop the server...";
 
-        Table table(tableHeader.str(), {"Client PID", "M", "N", "K", "Req. Count", "Avg. Processing (us)"}, MAX_CLIENTS, tableFooter.str());
+        Table table(tableHeader.str(), {"Client PID", "M", "N", "K", "Req. Count", "Avg. Processing (ns)"}, MAX_CLIENTS, tableFooter.str());
 
         system("clear");
         table.clear();
@@ -293,10 +303,10 @@ static void WorkloadDispatcher()
 
     while (gWorkspace.running)
     {
-        if (gClientBankUpdated.load(std::memory_order_acquire))
+        if (gWorkspace.clientBankUpdated.load(std::memory_order_acquire))
         {
-            localValidClientsBitSet = gValidClientsBitSet;
-            gClientBankUpdated.store(false, std::memory_order_release);
+            localValidClientsBitSet = gWorkspace.validClientsBitSet;
+            gWorkspace.clientBankUpdated.store(false, std::memory_order_release);
         }
 
         for (int i = 0; i < MAX_CLIENTS; i++)
@@ -336,11 +346,19 @@ int main(int argc, char* argv[])
 
     gWorkspace.serverPid = getpid();
     gWorkspace.clientBank.reserve(MAX_CLIENTS);
+    gWorkspace.workerThreads.reserve(gWorkspace.numWorkerThreads);
+    gWorkspace.workerQueues.reserve(gWorkspace.numWorkerThreads);
     gWorkspace.running = true;
 
     try
     {
         gWorkspace.pIpcServer = std::make_unique<UnixSockIpcServer<ClientServerMessage>>(SERVER_SOCKET_ADDRESS, MessageHandler);
+
+        for (uint32_t i = 0; i < gWorkspace.numWorkerThreads; i++)
+        {
+            gWorkspace.workerQueues.push_back(std::make_unique<SpscQueueSeqLock>(i, SpscQueueSeqLock::Role::Producer, WORKER_THREAD_QUEUE_CAPACITY, WORKER_THREAD_QUEUE_NAME_SUFFIX));
+            gWorkspace.workerThreads.push_back(std::thread(workerThreadRoutine, i));
+        }
     }
     catch(const std::exception& e)
     {
@@ -348,11 +366,19 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    std::jthread serverStatsThread(DisplayServerStats);
-    std::jthread workloadDispatcherThread(WorkloadDispatcher);
+    std::thread serverStatsThread(DisplayServerStats);
+    std::thread workloadDispatcherThread(WorkloadDispatcher);
 
     std::cin.get();
     gWorkspace.running = false;
+
+    for (auto& th : gWorkspace.workerThreads)
+    {
+        th.join();
+    }
+    
+    serverStatsThread.join();
+    workloadDispatcherThread.join();
 
     return 0;
 }

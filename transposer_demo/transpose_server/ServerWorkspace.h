@@ -4,10 +4,13 @@
 #include <memory>
 #include <shared_mutex>
 #include <vector>
+#include <thread>
 
 #include "ClientContext.h"
 #include "unix-socks/UnixSockIpcServer.h"
 #include "ClientServerMessage.h"
+#include "spsc-queue/SpscQueueSeqLock.h"
+
 
 using ClientBank = std::vector<ClientContext>;
 
@@ -19,4 +22,8 @@ struct ServerWorkspace
     ClientBank clientBank;
     std::shared_mutex clientBankMutex;
     std::unique_ptr<UnixSockIpcServer<ClientServerMessage>> pIpcServer;
+    std::atomic<bool> clientBankUpdated { false };
+    uint64_t validClientsBitSet { 0 };
+    std::vector<std::thread> workerThreads;
+    std::vector<std::unique_ptr<SpscQueueSeqLock>> workerQueues;
 };
