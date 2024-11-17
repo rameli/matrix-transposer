@@ -82,7 +82,7 @@ static bool ClientExists(uint32_t clientId, uint32_t& bankIndex)
 {
     for (int i = 0; i < gWorkspace.clientBank.size(); i++)
     {
-        if (gWorkspace.clientBank[i].id == clientId)
+        if (gWorkspace.clientBank[i].id == clientId && gWorkspace.clientBank[i].subscribed)
         {
             bankIndex = i;
             return true;
@@ -133,6 +133,8 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
             newClientContext.matrixBuffers.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SharedMatrixBuffer::BufferInitMode::NoInit, MATRIX_BUF_NAME_SUFFIX));
             newClientContext.matrixBuffersTr.push_back(std::make_unique<SharedMatrixBuffer>(clientId, SharedMatrixBuffer::Endpoint::Server, m, n, bufferIndex, SharedMatrixBuffer::BufferInitMode::NoInit, TR_MATRIX_BUF_NAME_SUFFIX));
         }
+
+        newClientContext.subscribed = true;
     }
     catch(const std::exception& e)
     {
@@ -145,17 +147,21 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
         return false;
     }
 
+
+
     // Waiting for thread dispatcher to pick up the new client
-    while (gWorkspace.clientBankUpdated.load(std::memory_order_acquire));
+    while (gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire));
 
     setBit(gWorkspace.validClientsBitSet, indexToAdd, 1);
-    gWorkspace.clientBankUpdated.store(true, std::memory_order_release);
+    gWorkspace.clientBankUpdateAvailable.store(true, std::memory_order_release);
 
     return true;
 }
 
 static void RemoveClient(uint32_t clientId)
 {
+    // std::clog << "RemoveClient(" << clientId << ")" << std::endl;
+
     int indexToRemove = 0;
 
     for (int i = 0; i < gWorkspace.clientBank.size(); i++)
@@ -167,15 +173,31 @@ static void RemoveClient(uint32_t clientId)
         }
     }
 
+    // std::clog << "  >> indexToRemove: " << indexToRemove << std::endl;
+    // std::clog << "  >> clientBankUpdateAvailable: " << gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire) << std::endl;
+
+
     // Waiting for thread dispatcher to pick up the new client
-    while (gWorkspace.clientBankUpdated.load(std::memory_order_acquire));
+    while (gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire));
+
+    // std::clog << "  >> clientBankUpdateAvailable: " << gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire) << std::endl;
+    // std::clog << "  >> validClientsBitSet: " << gWorkspace.validClientsBitSet << std::endl;
 
     setBit(gWorkspace.validClientsBitSet, indexToRemove, 0);
-    gWorkspace.clientBankUpdated.store(true, std::memory_order_release);
 
-    while (gWorkspace.clientBankUpdated.load(std::memory_order_acquire));
+    // std::clog << "  >> validClientsBitSet: " << gWorkspace.validClientsBitSet << std::endl;
+    // std::clog << "  >> clientBankUpdateAvailable: " << gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire) << std::endl;
 
-    gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToRemove);
+    gWorkspace.clientBankUpdateAvailable.store(true, std::memory_order_release);
+
+    // std::clog << "  >> clientBankUpdateAvailable: " << gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire) << std::endl;
+
+    while (gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire));
+
+    std::clog << "  >> gWorkspace.clientBank.erase(" << indexToRemove << ")" << std::endl;
+
+    // gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToRemove);
+    gWorkspace.clientBank[indexToRemove].subscribed = false;
 }
 
 static void MessageHandler(const UnixSockIpcContext& context, const ClientServerMessage& message)
@@ -236,12 +258,12 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
             }
 
             ClientContext& clientContext = gWorkspace.clientBank[bankIndex];
-            std::clog << "client: " << clientContext.id 
-                    << ", m: "<< clientContext.matrixSize.m
-                    << ", n: " << clientContext.matrixSize.n 
-                    << ", k: " << clientContext.matrixSize.k
-                    << ", totalReqs: " << clientContext.stats.GetTotalRequests()
-                    << ", avgTime: " << clientContext.stats.GetAverageElapsedTimeUs() << " (ns)" << std::endl;
+            // std::clog << "client: " << clientContext.id 
+            //         << ", m: "<< clientContext.matrixSize.m
+            //         << ", n: " << clientContext.matrixSize.n 
+            //         << ", k: " << clientContext.matrixSize.k
+            //         << ", totalReqs: " << clientContext.stats.GetTotalRequests()
+            //         << ", avgTime: " << clientContext.stats.GetAverageElapsedTimeUs() << " (ns)" << std::endl;
 
             RemoveClient(clientId);
         }
@@ -278,6 +300,11 @@ static void DisplayServerStats()
             shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
             for (const auto& clientContext : gWorkspace.clientBank)
             {
+                if (!clientContext.subscribed)
+                {
+                    continue;
+                }
+
                 table.addRow({std::to_string(clientContext.id),
                             std::to_string(clientContext.matrixSize.m),
                             std::to_string(clientContext.matrixSize.n),
@@ -303,10 +330,12 @@ static void WorkloadDispatcher()
 
     while (gWorkspace.running)
     {
-        if (gWorkspace.clientBankUpdated.load(std::memory_order_acquire))
+        if (gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire))
         {
             localValidClientsBitSet = gWorkspace.validClientsBitSet;
-            gWorkspace.clientBankUpdated.store(false, std::memory_order_release);
+            gWorkspace.clientBankUpdateAvailable.store(false, std::memory_order_release);
+
+            std::clog << "  >> localValidClientsBitSet: " << localValidClientsBitSet << std::endl;
         }
 
         for (int i = 0; i < MAX_CLIENTS; i++)

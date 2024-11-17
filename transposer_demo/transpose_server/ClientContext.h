@@ -17,6 +17,7 @@ using ClientId = uint32_t;
 
 struct ClientContext
 {
+    bool subscribed { false };
     ClientId id;
     BufferDimensions matrixSize;
     ClientStats stats;
