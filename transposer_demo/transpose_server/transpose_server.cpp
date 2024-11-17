@@ -320,13 +320,13 @@ static void WorkloadDispatcher()
             uint32_t bufferIndex;
             if (clientContext.pRequestQueue->Dequeue(bufferIndex))
             {
-                uint64_t* originalMat = clientContext.matrixBuffers[bufferIndex]->GetRawPointer();
-                uint64_t* transposeRes = clientContext.matrixBuffersTr[bufferIndex]->GetRawPointer();
+                uint64_t* pOriginalMat = clientContext.matrixBuffers[bufferIndex]->GetRawPointer();
+                uint64_t* pTransposeRes = clientContext.matrixBuffersTr[bufferIndex]->GetRawPointer();
                 uint32_t rowCount = clientContext.matrixSize.numRows;
                 uint32_t columnCount = clientContext.matrixSize.numColumns;
 
                 clientContext.stats.StartTimer();
-                // TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
+                // TransposeTiledMultiThreaded(pOriginalMat, pTransposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
 
                 clientContext.pTransposeReadyFutex->Wake();
                 // clientContext.pTransposeReadyFutex->m_RawPointer->store(0, std::memory_order_release);
