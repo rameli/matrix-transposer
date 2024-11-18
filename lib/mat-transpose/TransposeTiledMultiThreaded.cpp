@@ -31,8 +31,8 @@ void TransposeTiledMultiThreaded(uint64_t* src, uint64_t* dst, uint32_t rowCount
 
     for (uint32_t t = 0; t < numThreads; t++)
     {
-        // threads[t] = std::thread([&, t]()
-        // {
+        threads[t] = std::thread([&, t]()
+        {
             for (size_t idx = t; idx < blocks.size(); idx += numThreads)
             {
                 Block& block = blocks[idx];
@@ -44,11 +44,11 @@ void TransposeTiledMultiThreaded(uint64_t* src, uint64_t* dst, uint32_t rowCount
                     }
                 }
             }
-        // });
+        });
     }
 
-    // for (auto& th : threads)
-    // {
-    //     th.join();
-    // }
+    for (auto& th : threads)
+    {
+        th.join();
+    }
 }

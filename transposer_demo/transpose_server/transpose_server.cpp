@@ -39,30 +39,16 @@ using MatrixTransposer::Constants::WORKER_THREAD_QUEUE_NAME_SUFFIX;
 
 ServerWorkspace gWorkspace;
 
-void setBit(uint64_t &number, int position, bool value) {
-    if (position < 0 || position >= 64)
-    {
-        throw std::out_of_range("Bit position must be in the range [0, 63]");
-    }
+void setBit(uint64_t &number, int position, bool value)
+{
     if (value)
-    {
-        // Set the bit to 1
         number |= (1ULL << position);
-    }
     else
-    {
-        // Set the bit to 0
         number &= ~(1ULL << position);
-    }
 }
 
 bool getBit(const uint64_t &number, int position)
 {
-    if (position < 0 || position >= 64)
-    {
-        throw std::out_of_range("Bit position must be in the range [0, 63]");
-    }
-    
     return (number & (1ULL << position)) != 0;
 }
 
@@ -351,6 +337,7 @@ static void WorkloadDispatcher()
             uint32_t bufferIndex;
             if (clientContext.pRequestQueue->Dequeue(bufferIndex))
             {
+                std::clog << "WorkloadDispatcher: Dequeued buffer index: " << bufferIndex << " for client PID: " << clientContext.id << std::endl;
                 uint64_t* pOriginalMat = clientContext.matrixBuffers[bufferIndex]->GetRawPointer();
                 uint64_t* pTransposeRes = clientContext.matrixBuffersTr[bufferIndex]->GetRawPointer();
                 uint32_t rowCount = clientContext.matrixSize.numRows;
@@ -360,7 +347,6 @@ static void WorkloadDispatcher()
                 TransposeTiledMultiThreaded(pOriginalMat, pTransposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
 
                 clientContext.pTransposeReadyFutex->Wake();
-                // clientContext.pTransposeReadyFutex->m_RawPointer->store(0, std::memory_order_release);
                 clientContext.stats.StopTimer();
             }
         }

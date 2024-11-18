@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
         gWorkspace.subscribeResponseReceived = false;
         gWorkspace.pIpcClient = std::make_unique<UnixSockIpcClient<ClientServerMessage>>(SERVER_SOCKET_ADDRESS, MessageHandler);
         gWorkspace.pTransposeReadyFutex = std::make_unique<FutexSignaller>(gWorkspace.clientPid, FutexSignaller::Role::Waiter, "");
-        gWorkspace.pRequestQueue = std::make_unique<SpscQueueRingBuffer>(gWorkspace.clientPid, SpscQueueRingBuffer::Role::Producer, REQ_QUEUE_CAPACITY, REQ_QUEUE_NAME_SUFFIX);
+        gWorkspace.pRequestQueue = std::make_unique<SpscQueueSeqLock>(gWorkspace.clientPid, SpscQueueSeqLock::Role::Producer, REQ_QUEUE_CAPACITY, REQ_QUEUE_NAME_SUFFIX);
 
         gWorkspace.matrixBuffers.reserve(gWorkspace.buffers.k);
         gWorkspace.matrixBuffersTr.reserve(gWorkspace.buffers.k);
