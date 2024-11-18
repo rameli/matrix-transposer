@@ -20,7 +20,6 @@ struct ServerWorkspace
     uint32_t numWorkerThreads;
     uint32_t serverPid;
     ClientBank clientBank;
-    std::shared_mutex clientBankMutex;
     std::unique_ptr<UnixSockIpcServer<ClientServerMessage>> pIpcServer;
     std::atomic<bool> clientBankUpdateAvailable { false };
     uint64_t validClientsBitSet { 0 };

@@ -51,13 +51,12 @@ static void BM_TransposeTiledMultiThreaded(benchmark::State& state)
 
 // Set up the benchmark ranges and add names for each argument
 BENCHMARK(BM_TransposeTiledMultiThreaded)
-    // ->Iterations(4)
     ->Setup(DoSetup)
     ->Teardown(DoTeardown)
     ->ArgsProduct({{12}, // m
                    {12}, // n
-                   {8, 16, 32, 64, 128, 256, 512},     // tileSize
-                   {1} // numThreads
+                   {32, 64, 128},     // tileSize
+                   {1, 2, 4, 8, 16, 32} // numThreads
                   })
     ->ArgNames({"m", "n", "tileSize", "numThreads"})
     ->Unit(benchmark::kMicrosecond);

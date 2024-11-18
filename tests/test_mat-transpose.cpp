@@ -159,9 +159,7 @@ TEST_P(TileMultiThreadedTest, TileMultiThreaded)
 
 
     TransposeNaive(originalMat, refTranspose, rowCount, columnCount);
-    // TransposeTiledMultiThreaded_setup(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
     TransposeTiledMultiThreaded(originalMat, transposeRes, rowCount, columnCount, tileSize, numThreads);
-    // TransposeTiledMultiThreaded_teardown();
 
     EXPECT_TRUE(MatricesAreEqual(transposeRes, refTranspose, columnCount, rowCount));
 

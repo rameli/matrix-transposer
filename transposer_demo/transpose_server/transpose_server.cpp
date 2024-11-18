@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
-#include <mutex>
 #include <sstream>
 #include <string>
 #include <unistd.h>
@@ -20,9 +19,6 @@
 #include "ServerWorkspace.h"
 #include "unix-socks/UnixSockIpcServer.h"
 
-using std::shared_lock;
-using std::shared_mutex;
-using std::unique_lock;
 using std::unique_ptr;
 using std::unordered_map;
 using std::vector;
@@ -124,8 +120,6 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
     catch(const std::exception& e)
     {
         {
-            // unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
-            // gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToAdd);
         }
         std::cout << "Failed to set up client context for client PID: " << clientId << std::endl;
         std::cerr << e.what() << '\n';
@@ -145,8 +139,6 @@ static bool AddClient(uint32_t clientId, uint32_t m, uint32_t n, uint32_t k, con
 
 static void RemoveClient(uint32_t clientId)
 {
-    // std::clog << "RemoveClient(" << clientId << ")" << std::endl;
-
     int indexToRemove = 0;
 
     for (int i = 0; i < gWorkspace.clientBank.size(); i++)
@@ -158,30 +150,11 @@ static void RemoveClient(uint32_t clientId)
         }
     }
 
-    // std::clog << "  >> indexToRemove: " << indexToRemove << std::endl;
-    // std::clog << "  >> clientBankUpdateAvailable: " << gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire) << std::endl;
-
-
     // Waiting for thread dispatcher to pick up the new client
     while (gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire));
-
-    // std::clog << "  >> clientBankUpdateAvailable: " << gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire) << std::endl;
-    // std::clog << "  >> validClientsBitSet: " << gWorkspace.validClientsBitSet << std::endl;
-
     setBit(gWorkspace.validClientsBitSet, indexToRemove, 0);
-
-    // std::clog << "  >> validClientsBitSet: " << gWorkspace.validClientsBitSet << std::endl;
-    // std::clog << "  >> clientBankUpdateAvailable: " << gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire) << std::endl;
-
     gWorkspace.clientBankUpdateAvailable.store(true, std::memory_order_release);
-
-    // std::clog << "  >> clientBankUpdateAvailable: " << gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire) << std::endl;
-
     while (gWorkspace.clientBankUpdateAvailable.load(std::memory_order_acquire));
-
-    std::clog << "  >> gWorkspace.clientBank.erase(" << indexToRemove << ")" << std::endl;
-
-    // gWorkspace.clientBank.erase(gWorkspace.clientBank.begin() + indexToRemove);
     gWorkspace.clientBank[indexToRemove].subscribed = false;
 }
 
@@ -202,15 +175,13 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
 
         {
             uint32_t bankIndex;
-            // unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
-
             if (ClientExists(clientId, bankIndex))
             {
                 std::clog << "Client PID: " << clientId << " already exists" << std::endl;
                 return;
             }
 
-            std::clog << "MessageHandler: Adding client PID: " << clientId << std::endl;
+            std::clog << "Adding client PID: " << clientId << std::endl;
             if (!AddClient(clientId, m, n, k, context))
             {
                 std::clog << "Failed to add client PID: " << clientId << std::endl;
@@ -234,9 +205,6 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
 
         {
             uint32_t bankIndex;
-
-            // unique_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
-
             if (!ClientExists(clientId, bankIndex))
             {
                 std::cout << "Cannot remove client PID: " << clientId << ". Does not exist" << std::endl;
@@ -244,14 +212,12 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
             }
 
             ClientContext& clientContext = gWorkspace.clientBank[bankIndex];
-            // std::clog << "client: " << clientContext.id 
-            //         << ", m: "<< clientContext.matrixSize.m
-            //         << ", n: " << clientContext.matrixSize.n 
-            //         << ", k: " << clientContext.matrixSize.k
-            //         << ", totalReqs: " << clientContext.stats.GetTotalRequests()
-            //         << ", avgTime: " << clientContext.stats.GetAverageElapsedTimeUs() << " (ns)" << std::endl;
-
-            std::clog << "MessageHandler: Removing client PID: " << clientId << std::endl;
+            std::clog << "client: " << clientContext.id 
+                    << ", m: "<< clientContext.matrixSize.m
+                    << ", n: " << clientContext.matrixSize.n 
+                    << ", k: " << clientContext.matrixSize.k
+                    << ", totalReqs: " << clientContext.stats.GetTotalRequests()
+                    << ", avgTime: " << clientContext.stats.GetAverageElapsedTimeUs() << " (ns)" << std::endl;
 
             RemoveClient(clientId);
         }
@@ -285,7 +251,6 @@ static void DisplayServerStats()
         table.clear();
 
         {
-            // shared_lock<shared_mutex> lock(gWorkspace.clientBankMutex);
             for (const auto& clientContext : gWorkspace.clientBank)
             {
                 if (!clientContext.subscribed)
@@ -322,8 +287,6 @@ static void WorkloadDispatcher()
         {
             localValidClientsBitSet = gWorkspace.validClientsBitSet;
             gWorkspace.clientBankUpdateAvailable.store(false, std::memory_order_release);
-
-            std::clog << "  >> localValidClientsBitSet: " << localValidClientsBitSet << std::endl;
         }
 
         for (int i = 0; i < MAX_CLIENTS; i++)
@@ -337,7 +300,6 @@ static void WorkloadDispatcher()
             uint32_t bufferIndex;
             if (clientContext.pRequestQueue->Dequeue(bufferIndex))
             {
-                std::clog << "WorkloadDispatcher: Dequeued buffer index: " << bufferIndex << " for client PID: " << clientContext.id << std::endl;
                 uint64_t* pOriginalMat = clientContext.matrixBuffers[bufferIndex]->GetRawPointer();
                 uint64_t* pTransposeRes = clientContext.matrixBuffersTr[bufferIndex]->GetRawPointer();
                 uint32_t rowCount = clientContext.matrixSize.numRows;
