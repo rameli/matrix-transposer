@@ -23,6 +23,4 @@ struct ServerWorkspace
     std::unique_ptr<UnixSockIpcServer<ClientServerMessage>> pIpcServer;
     std::atomic<bool> clientBankUpdateAvailable { false };
     uint64_t validClientsBitSet { 0 };
-    std::vector<std::thread> workerThreads;
-    std::vector<std::unique_ptr<SpscQueueSeqLock>> workerQueues;
 };

@@ -48,18 +48,6 @@ bool getBit(const uint64_t &number, int position)
     return (number & (1ULL << position)) != 0;
 }
 
-void workerThreadRoutine(uint32_t id)
-{
-    while (gWorkspace.running)
-    {
-        uint32_t bufferIndex;
-        if (gWorkspace.workerQueues[id]->Dequeue(bufferIndex))
-        {
-            
-        }
-    }
-}
-
 static bool ClientExists(uint32_t clientId, uint32_t& bankIndex)
 {
     for (int i = 0; i < MAX_CLIENTS; i++)
@@ -286,8 +274,6 @@ int main(int argc, char* argv[])
 
     gWorkspace.serverPid = getpid();
     gWorkspace.clientBank.resize(MAX_CLIENTS);
-    gWorkspace.workerThreads.reserve(gWorkspace.numWorkerThreads);
-    gWorkspace.workerQueues.reserve(gWorkspace.numWorkerThreads);
     gWorkspace.running = true;
 
     for (int i = 0; i < MAX_CLIENTS; i++)
@@ -298,12 +284,6 @@ int main(int argc, char* argv[])
     try
     {
         gWorkspace.pIpcServer = std::make_unique<UnixSockIpcServer<ClientServerMessage>>(SERVER_SOCKET_ADDRESS, MessageHandler);
-
-        for (uint32_t i = 0; i < gWorkspace.numWorkerThreads; i++)
-        {
-            gWorkspace.workerQueues.push_back(std::make_unique<SpscQueueSeqLock>(i, SpscQueueSeqLock::Role::Producer, WORKER_THREAD_QUEUE_CAPACITY, WORKER_THREAD_QUEUE_NAME_SUFFIX));
-            gWorkspace.workerThreads.push_back(std::thread(workerThreadRoutine, i));
-        }
     }
     catch(const std::exception& e)
     {
@@ -321,11 +301,6 @@ int main(int argc, char* argv[])
     std::cin.get();
     gWorkspace.running = false;
 
-    for (auto& th : gWorkspace.workerThreads)
-    {
-        th.join();
-    }
-    
     workloadDispatcherThread.join();
 
     return 0;
