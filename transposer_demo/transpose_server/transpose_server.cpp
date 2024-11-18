@@ -357,7 +357,7 @@ static void WorkloadDispatcher()
                 uint32_t columnCount = clientContext.matrixSize.numColumns;
 
                 clientContext.stats.StartTimer();
-                // TransposeTiledMultiThreaded(pOriginalMat, pTransposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
+                TransposeTiledMultiThreaded(pOriginalMat, pTransposeRes, rowCount, columnCount, TRANSPOSE_TILE_SIZE, gWorkspace.numWorkerThreads);
 
                 clientContext.pTransposeReadyFutex->Wake();
                 // clientContext.pTransposeReadyFutex->m_RawPointer->store(0, std::memory_order_release);

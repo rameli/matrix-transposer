@@ -108,13 +108,7 @@ int main(int argc, char* argv[])
         {
             gWorkspace.stats.StartTimer();
             gWorkspace.pRequestQueue->Enqueue(bufferIndex);
-            
             gWorkspace.pTransposeReadyFutex->Wait();
-            // gWorkspace.pTransposeReadyFutex->m_RawPointer->store(1, std::memory_order_release);
-            // while(gWorkspace.pTransposeReadyFutex->m_RawPointer->load(std::memory_order_acquire) == 1)
-            // {
-            // }
-            
             gWorkspace.stats.StopTimer();
         }
     }
