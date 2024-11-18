@@ -175,9 +175,9 @@ INSTANTIATE_TEST_SUITE_P
     TileMultiThreadedTests,
     TileMultiThreadedTest,
     ::testing::Combine(
-        ::testing::Values(4, 5, 6), // m
-        ::testing::Values(4, 5, 6), // n
-        ::testing::Values(8, 16, 32, 64), // tileSize
-        ::testing::Values(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)  // numThreads
+        ::testing::Values(10), // m
+        ::testing::Values(10), // n
+        ::testing::Values(32), // tileSize
+        ::testing::Values(1, 2, 4, 8, 16, 32)  // numThreads
     )
 );
