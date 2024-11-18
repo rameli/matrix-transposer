@@ -53,9 +53,10 @@ static void BM_TransposeTiledMultiThreaded(benchmark::State& state)
 BENCHMARK(BM_TransposeTiledMultiThreaded)
     ->Setup(DoSetup)
     ->Teardown(DoTeardown)
-    ->ArgsProduct({{10, 12},
-                   {10, 12},
-                   {32},
-                   {2, 4, 8}})
+    ->ArgsProduct({{10, 12}, // m
+                   {10, 12}, // n
+                   {32},     // tileSize
+                   {2, 4, 8} // numThreads
+                  })
     ->ArgNames({"m", "n", "tileSize", "numThreads"})
     ->Unit(benchmark::kMicrosecond);

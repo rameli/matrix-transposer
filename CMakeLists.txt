@@ -111,8 +111,6 @@ set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON)
 set(BENCHMARK_SOURCES
     benchmarks/benchmark_main.cpp
     
-    # benchmarks/benchmark_Futex.cpp
-
     benchmarks/benchmark_SpscQueueRingBufferSingleThreaded.cpp
     benchmarks/benchmark_SpscQueueRingBufferMultiThreaded.cpp
     benchmarks/benchmark_SpscQueueSeqLockSingleThreaded.cpp
