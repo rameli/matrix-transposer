@@ -181,7 +181,7 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
                 return;
             }
 
-            std::clog << "Adding client PID: " << clientId << std::endl;
+            std::clog << "New client: " << clientId << std::endl;
             if (!AddClient(clientId, m, n, k, context))
             {
                 std::clog << "Failed to add client PID: " << clientId << std::endl;
@@ -231,52 +231,6 @@ static void MessageHandler(const UnixSockIpcContext& context, const ClientServer
 
 }
 
-static void DisplayServerStats()
-{
-    while (gWorkspace.running)
-    {
-        std::ostringstream tableHeader;
-        std::ostringstream tableFooter;
-
-        tableHeader << "****************************************************" << std::endl;
-        tableHeader << "Server running with PID: " << gWorkspace.serverPid << std::endl;
-        tableHeader << "Worker Threads: " << gWorkspace.numWorkerThreads << "/" << std::thread::hardware_concurrency() << std::endl;
-        tableHeader << "Clients: " << gWorkspace.clientBank.size() << "/" << MAX_CLIENTS << std::endl;
-
-        tableFooter << "Press ENTER to stop the server...";
-
-        Table table(tableHeader.str(), {"Client PID", "M", "N", "K", "Req. Count", "Avg. Processing (ns)"}, MAX_CLIENTS, tableFooter.str());
-
-        system("clear");
-        table.clear();
-
-        {
-            for (const auto& clientContext : gWorkspace.clientBank)
-            {
-                if (!clientContext.subscribed)
-                {
-                    continue;
-                }
-
-                table.addRow({std::to_string(clientContext.id),
-                            std::to_string(clientContext.matrixSize.m),
-                            std::to_string(clientContext.matrixSize.n),
-                            std::to_string(clientContext.matrixSize.k),
-                            std::to_string(clientContext.stats.GetTotalRequests()),
-                            std::to_string(clientContext.stats.GetAverageElapsedTimeUs())
-                            });
-            }
-        }
-
-        std::string tableOutput = table.render();
-        std::cout << tableOutput;
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-
-    std::cout << "Server shutting down..." << std::endl;
-    std::cout << "****************************************************" << std::endl;
-}
-
 static void WorkloadDispatcher()
 {
     uint64_t localValidClientsBitSet = 0;
@@ -324,6 +278,12 @@ int main(int argc, char* argv[])
         gWorkspace.numWorkerThreads = std::atoi(argv[1]);
     }
 
+    if (gWorkspace.numWorkerThreads & (gWorkspace.numWorkerThreads - 1))
+    {
+        std::cerr << "Number of worker threads must be a power of 2" << std::endl;
+        return 1;
+    }
+
     gWorkspace.serverPid = getpid();
     gWorkspace.clientBank.resize(MAX_CLIENTS);
     gWorkspace.workerThreads.reserve(gWorkspace.numWorkerThreads);
@@ -339,11 +299,11 @@ int main(int argc, char* argv[])
     {
         gWorkspace.pIpcServer = std::make_unique<UnixSockIpcServer<ClientServerMessage>>(SERVER_SOCKET_ADDRESS, MessageHandler);
 
-        // for (uint32_t i = 0; i < gWorkspace.numWorkerThreads; i++)
-        // {
-        //     gWorkspace.workerQueues.push_back(std::make_unique<SpscQueueSeqLock>(i, SpscQueueSeqLock::Role::Producer, WORKER_THREAD_QUEUE_CAPACITY, WORKER_THREAD_QUEUE_NAME_SUFFIX));
-        //     gWorkspace.workerThreads.push_back(std::thread(workerThreadRoutine, i));
-        // }
+        for (uint32_t i = 0; i < gWorkspace.numWorkerThreads; i++)
+        {
+            gWorkspace.workerQueues.push_back(std::make_unique<SpscQueueSeqLock>(i, SpscQueueSeqLock::Role::Producer, WORKER_THREAD_QUEUE_CAPACITY, WORKER_THREAD_QUEUE_NAME_SUFFIX));
+            gWorkspace.workerThreads.push_back(std::thread(workerThreadRoutine, i));
+        }
     }
     catch(const std::exception& e)
     {
@@ -351,25 +311,21 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // std::thread serverStatsThread(DisplayServerStats);
     std::thread workloadDispatcherThread(WorkloadDispatcher);
 
-    // std::jthread ipcServerThread([&](){
-    //     for (int i = 0; i < gWorkspace.numWorkerThreads; i++)
-    //     {
-    //         gWorkspace.workerQueues[i]->Enqueue(i);
-    //     }
-    // });
+
+    std::clog << "Server PID: " << gWorkspace.serverPid << std::endl;
+    std::clog << "Running " << gWorkspace.numWorkerThreads << "/" << std::thread::hardware_concurrency() << " worker threads" << std::endl;
+    std::clog << "Press Enter to stop the server" << std::endl;
 
     std::cin.get();
     gWorkspace.running = false;
 
-    // for (auto& th : gWorkspace.workerThreads)
-    // {
-    //     th.join();
-    // }
+    for (auto& th : gWorkspace.workerThreads)
+    {
+        th.join();
+    }
     
-    // serverStatsThread.join();
     workloadDispatcherThread.join();
 
     return 0;

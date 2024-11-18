@@ -12,7 +12,7 @@ namespace MatrixTransposer::Constants
     constexpr uint32_t REQ_QUEUE_CAPACITY = 16;
     constexpr uint32_t MAX_CLIENTS = 64;
     const std::string WORKER_THREAD_QUEUE_NAME_SUFFIX = "_wrk_q";
-    const uint32_t WORKER_THREAD_QUEUE_CAPACITY = 1024*1024;
+    const uint32_t WORKER_THREAD_QUEUE_CAPACITY = 16*1024*1024;
 
     constexpr uint32_t TRANSPOSE_TILE_SIZE = 64;
 
