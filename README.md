@@ -98,6 +98,6 @@ Performance of various software components are thoroughly benchmarked.
 
 While in `matrix-transposer/build`, to run unit tests after building the project
 ```bash
-./run_
+./run_benchmarks
 ```
 ![Benchmark Results](doc/benchmarks.png)
