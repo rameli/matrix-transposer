@@ -56,7 +56,7 @@ for (( i=0; i<REPETITIONS; i++ )); do
 
   (
     sleep $DELAY_SEC
-    ./transpose_client $RANDOM1 $RANDOM2 $RANDOM3 2> /home/rameli/work/matrix-transposer/build/client.errors
+    ./transpose_client $RANDOM1 $RANDOM2 $RANDOM3 2> ./build/client.errors
   ) &
 
 done

@@ -112,11 +112,11 @@ set(BENCHMARK_SOURCES
     benchmarks/benchmark_main.cpp
     
     benchmarks/benchmark_SpscQueueRingBufferSingleThreaded.cpp
-    benchmarks/benchmark_SpscQueueRingBufferMultiThreaded.cpp
+    # benchmarks/benchmark_SpscQueueRingBufferMultiThreaded.cpp
     benchmarks/benchmark_SpscQueueSeqLockSingleThreaded.cpp
-    benchmarks/benchmark_SpscQueueSeqLockMultiThreaded.cpp
+    # benchmarks/benchmark_SpscQueueSeqLockMultiThreaded.cpp
 
-    benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreaded.cpp
+    # benchmarks/benchmark_mat-transpose_TransposeTiledMultiThreaded.cpp
 )
 
 add_executable(run_benchmarks ${BENCHMARK_SOURCES})

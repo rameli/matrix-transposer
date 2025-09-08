@@ -43,7 +43,7 @@ static void BM_SpscQueueRingBuffer_Enque(benchmark::State& state)
 }
 BENCHMARK(BM_SpscQueueRingBuffer_Enque)
     ->Setup(DoSetup)->Teardown(DoTeardown)
-    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);
+    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(10000);
 
 static void BM_SpscQueueRingBuffer_Deque(benchmark::State& state)
 {
@@ -61,7 +61,7 @@ static void BM_SpscQueueRingBuffer_Deque(benchmark::State& state)
 }
 BENCHMARK(BM_SpscQueueRingBuffer_Deque)
     ->Setup(DoSetup)->Teardown(DoTeardown)
-    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);
+    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(10000);
 
 
 static void BM_SpscQueueRingBuffer_EnqueueDeque(benchmark::State& state)
@@ -81,4 +81,4 @@ static void BM_SpscQueueRingBuffer_EnqueueDeque(benchmark::State& state)
 }
 BENCHMARK(BM_SpscQueueRingBuffer_EnqueueDeque)
     ->Setup(DoSetup)->Teardown(DoTeardown)
-    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(1000'000);
+    ->ArgName("Item Count")->Arg(1)->Arg(1000)->Arg(10000);

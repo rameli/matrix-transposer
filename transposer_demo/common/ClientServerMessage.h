@@ -6,8 +6,8 @@
 #include <sstream>
 
 
-// alignas(1) is used to ensure that the struct is packed and has no padding
-struct alignas(1) ClientServerMessage
+// __attribute__((packed)) is used to ensure that the struct is packed and has no padding
+struct __attribute__((packed)) ClientServerMessage
 {
     enum class MessageType : uint32_t
     {
