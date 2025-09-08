@@ -61,7 +61,7 @@ To run the server, use `transpose_server` in the build directory. The only argum
 rm -rf /dev/shm/*
 
 # Start the server with 8 matrix processing threads
-$ ./transpose_server 8 > server_errors.log
+./transpose_server 8 > server_errors.log
 Server PID: 338862
 Running 8/16 worker threads
 Press Enter to stop the server
@@ -72,13 +72,13 @@ A client process requires 4 parameters which are respectively `m`, `n`, `k` desc
 # Start a client process requesting 12 matrixes to be processed
 # Each matrix has 2^8 rows and 2^9 colums
 # Each matrix is sent 250 times to the server
-$ ./transpose_client 8 9 12 250 > client_errors.log
+./transpose_client 8 9 12 250 > client_errors.log
 client: 338944, m: 8, n: 9, k: 12, reps: 250, reqs: 3000, avgTime: 735476 (ns)
 ```
 
 The server logs the connected clients and the processing times to console.
 ```bash
-$ ./transpose_server 8 > server_errors.log
+./transpose_server 8 > server_errors.log
 Server PID: 338862
 Running 8/16 worker threads
 Press Enter to stop the server
